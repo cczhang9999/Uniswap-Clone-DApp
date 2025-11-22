@@ -46,3 +46,5 @@ typechain-types
 cache
 artifacts
 
+package-lock.json
+.gitignore

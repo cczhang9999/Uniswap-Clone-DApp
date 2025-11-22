@@ -1,0 +1,38 @@
+.model {
+  position: absolute;
+  inset: 0% 0% 0% 0%;
+  background-color: #1e1e1e5a;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  height: 100vh;
+  width: 100vw;
+  z-index: 111111111;
+}
+.model_box {
+  background-color: #1e1e1e;
+  padding: 2rem;
+  border-radius: 0.5rem;
+}
+.model_box_heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.model_box_heading p {
+  font-size: 1.2rem;
+}
+.model_box_wallet p {
+  background-color: #cff80b;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  color: #1e1e1e;
+  font-weight: 700;
+  cursor: pointer;
+}
+.model_box_para {
+  padding: 1rem;
+  line-height: 1.2;
+  border: 1px solid #cff80b;
+  border-radius: 0.5rem;
+}
