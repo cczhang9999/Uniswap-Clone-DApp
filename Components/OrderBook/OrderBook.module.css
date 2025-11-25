@@ -1,0 +1,101 @@
+.OrderBook {
+  width: 50%;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #23242f;
+  border-radius: 1rem;
+}
+
+.OrderBook_box {
+  display: flex;
+  gap: 2rem;
+}
+
+.OrderBook_box_left {
+  flex: 1;
+}
+
+.OrderBook_box_right {
+  flex: 1;
+  background-color: #1e1f29;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.OrderBook_box_heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.OrderBook_box_heading p {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.OrderBook_box_input {
+  margin-bottom: 1rem;
+}
+
+.OrderBook_box_input input {
+  width: 100%;
+  padding: 1rem;
+  background-color: #2c2f36;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  outline: none;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.OrderBook_box_input input:focus {
+  border: 1px solid #7765f3;
+}
+
+.OrderBook_box_btn {
+  width: 100%;
+  padding: 1rem;
+  background-color: #7765f3;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.OrderBook_box_btn:hover {
+  background-color: #5b4bcc;
+}
+
+.OrderBook_list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.OrderBook_list_item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.OrderBook_list_item_buy {
+  color: #00ff00;
+}
+
+.OrderBook_list_item_sell {
+  color: #ff0000;
+}
+
+.OrderBook_list_header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #999;
+}

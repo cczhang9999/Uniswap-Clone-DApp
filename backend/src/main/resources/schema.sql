@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS deposits (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255),
+    currency VARCHAR(50),
+    amount DECIMAL(20, 8),
+    timestamp BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS balances (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255),
+    currency VARCHAR(50),
+    available DECIMAL(20, 8),
+    frozen DECIMAL(20, 8)
+);

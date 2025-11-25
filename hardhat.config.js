@@ -20,8 +20,12 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: "https://rpc.ankr.com/eth",
+        url: "https://eth.llamarpc.com",
+        enabled: false,
       },
+    },
+    localhost: {
+      url: "http://localhost:8545",
     },
   },
 };

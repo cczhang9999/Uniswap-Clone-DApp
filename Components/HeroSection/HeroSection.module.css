@@ -1,59 +1,103 @@
 .HeroSection {
   display: flex;
-  width: 90%;
-  margin: 2rem auto;
   justify-content: center;
-  position: relative;
+  align-items: center;
+  min-height: 80vh;
+  padding: 2rem;
 }
+
 .HeroSection_box {
-  margin-top: 5rem;
-  background-color: #1e1e1e;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  width: 30rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  padding: 2rem;
+  border-radius: 1.5rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
+
 .HeroSection_box_heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 1.5rem;
 }
+
+.HeroSection_box_heading p {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
 .HeroSection_box_input {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid #cff80b;
-  border-radius: 0.5rem;
-  padding-left: 2rem;
-  margin-top: 1rem;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
 }
+
+.HeroSection_box_input:hover,
+.HeroSection_box_input:focus-within {
+  border-color: var(--glass-border);
+  background: rgba(0, 0, 0, 0.3);
+}
+
 .HeroSection_box_input input {
-  border: 0;
-  outline: 0;
-  background-color: transparent;
-  color: #cff80b;
-  font-size: 1.2rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 1.8rem;
+  color: var(--text-color);
+  width: 60%;
+  font-weight: 500;
 }
+
+.HeroSection_box_input input::placeholder {
+  color: var(--text-muted);
+}
+
 .HeroSection_box_input button {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  line-height: 0;
-  background-color: #cff80b;
-  padding: 1rem;
-  font-weight: 700;
-  font-size: 1.2rem;
-  border-radius: 0.5rem;
-}
-.HeroSection_box_btn {
-  background-color: #cff80b;
-  border: 0;
-  outline: 0;
-  width: 100%;
-  margin-top: 1.5rem;
-  padding: 1rem;
+  gap: 0.5rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 0.5rem 1rem;
   border-radius: 2rem;
+  color: var(--text-color);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.HeroSection_box_input button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.HeroSection_box_btn {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 1.2rem;
+  border-radius: 1rem;
+  border: none;
+  outline: none;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  color: white;
   font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.HeroSection_box_btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(245, 133, 22, 0.4);
 }
 
 @media only screen and (max-width: 35em) {

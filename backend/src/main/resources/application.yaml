@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: hobart
+    password: 123456
+  data:
+    redis:
+      host: 212.227.166.131
+      port: 9305
+      database: 0
+      password: pass123editmelol
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

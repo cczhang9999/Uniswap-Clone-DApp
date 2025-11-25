@@ -1,0 +1,109 @@
+.SearchToken {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.SearchToken_box {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  width: 90%;
+  max-width: 450px;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.SearchToken_box_heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.SearchToken_box_heading h4 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.SearchToken_box_search {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  padding: 0.8rem 1rem;
+  border-radius: 1rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.SearchToken_box_search:focus-within {
+  border-color: var(--secondary-color);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.SearchToken_box_search input {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.SearchToken_box_tokens {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.SearchToken_box_tokens span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.SearchToken_box_tokens span:hover,
+.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--secondary-color);
+}
+
+.SearchToken_box_tokens span img {
+  border-radius: 50%;
+}
+
+/* Scrollbar styling */
+.SearchToken_box_tokens::-webkit-scrollbar {
+  width: 6px;
+}
+
+.SearchToken_box_tokens::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.SearchToken_box_tokens::-webkit-scrollbar-thumb {
+  background: var(--secondary-color);
+  border-radius: 3px;
+}

@@ -1,10 +1,13 @@
 import "../styles/globals.css";
-
+import { SwapProvider } from "../Context/SwapContext";
 import NavBar from "../Components/NavBar/NavBar";
+
 const MyApp = ({ Component, pageProps }) => (
   <div>
-    <NavBar />
-    <Component {...pageProps} />
+    <SwapProvider>
+      <NavBar />
+      <Component {...pageProps} />
+    </SwapProvider>
   </div>
 );
 

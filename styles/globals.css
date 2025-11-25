@@ -1,1 +1,24 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --primary-color: #772f1a;
+  --secondary-color: #f58516;
+  --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-color: #ffffff;
+  --text-muted: #a0a0a0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Outfit", sans-serif;
+}
+
+body {
+  background: var(--bg-gradient);
+  color: var(--text-color);
+  min-height: 100vh;
+}

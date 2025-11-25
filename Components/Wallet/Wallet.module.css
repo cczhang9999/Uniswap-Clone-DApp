@@ -1,0 +1,89 @@
+.Wallet {
+  width: 50%;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #23242f;
+  border-radius: 1rem;
+}
+
+.Wallet_box {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.Wallet_box_heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.Wallet_box_heading p {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.Wallet_box_input {
+  margin-bottom: 1rem;
+}
+
+.Wallet_box_input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #999;
+}
+
+.Wallet_box_input input, .Wallet_box_input select {
+  width: 100%;
+  padding: 1rem;
+  background-color: #2c2f36;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  outline: none;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.Wallet_box_input input:focus {
+  border: 1px solid #7765f3;
+}
+
+.Wallet_box_btn {
+  width: 100%;
+  padding: 1rem;
+  background-color: #7765f3;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.Wallet_box_btn:hover {
+  background-color: #5b4bcc;
+}
+
+.Wallet_balance_list {
+  display: flex;
+  gap: 2rem;
+  background-color: #1e1f29;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.Wallet_balance_item {
+  flex: 1;
+}
+
+.Wallet_balance_item h4 {
+  margin-bottom: 0.5rem;
+  color: #7765f3;
+}
+
+.Wallet_balance_item p {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin: 0.2rem 0;
+}

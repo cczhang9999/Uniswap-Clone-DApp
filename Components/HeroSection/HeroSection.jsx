@@ -1,25 +1,41 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useState, useContext } from "react";
 import Image from "next/image";
 
 import Style from "./HeroSection.module.css";
 import images from "../../assets";
 import { Token, SearchToken } from "../index";
-const HeroSection = ({ accounts, tokenData }) => {
+
+//CONTEXT
+import { SwapContext } from "../../Context/SwapContext";
+
+const HeroSection = ({}) => {
   const [openSetting, setOpenSetting] = useState(false);
   const [openToken, setOpenToken] = useState(false);
   const [openTokensTwo, setOpenTokensTwo] = useState(false);
 
+  const { account, weth9, dai, ether, connectWallet, tokenData, isLoading, singleSwapToken, topTokenList } =
+    useContext(SwapContext);
+
   //token 1
-  const [token1, setToken1] = useState({
+  const [tokenOne, setTokenOne] = useState({
     name: "",
-    images: "",
+    image: "",
   });
   //token 2
-  const [token2, setToken2] = useState({
+  const [tokenTwo, setTokenTwo] = useState({
     name: "",
-    images: "",
+    image: "",
   });
-  //jsx
+  
+  const [enteredValue, setEnteredValue] = useState("");
+
+  React.useEffect(() => {
+    if (topTokenList) {
+      setTokenOne(topTokenList[0]);
+      setTokenTwo(topTokenList[1]);
+    }
+  }, [topTokenList]);
+
   return (
     <div className={Style.HeroSection}>
       <div className={Style.HeroSection_box}>
@@ -31,62 +47,81 @@ const HeroSection = ({ accounts, tokenData }) => {
               alt="image"
               width={50}
               height={50}
-              onClink={() => setOpenSetting(true)}
+              onClick={() => setOpenSetting(true)}
             />
           </div>
         </div>
+
         <div className={Style.HeroSection_box_input}>
-          <input type="text" placeholder="0.0" />
-          <button onClick={() => openToken(true)}>
+          <input 
+            type="text" 
+            placeholder="0" 
+            value={enteredValue}
+            onChange={(e) => setEnteredValue(e.target.value)}
+          />
+          <button onClick={() => setOpenToken(true)}>
             <Image
-              src={images.image || images.etherlogo}
-              alt="ether"
+              src={tokenOne.image || images.etherlogo}
               width={20}
               height={20}
+              alt="ether"
             />
-            {token1.name || "ETH"}
-            <small>9474</small>
+            {tokenOne.name || "ETH"}
+            <small>{tokenOne.tokenBalance || "0"}</small>
           </button>
         </div>
+
         <div className={Style.HeroSection_box_input}>
-          <input type="text" placeholder="0.0" />
-          <button onClick={() => openToken(true)}>
+          <input type="text" placeholder="0" />
+          <button onClick={() => setOpenTokensTwo(true)}>
             <Image
-              src={token2.image || images.etherlogo}
-              alt="ether"
+              src={tokenTwo.image || images.etherlogo}
               width={20}
               height={20}
+              alt="ether"
             />
-            {token2.name || "ETH"}
-            <small>9474</small>
+            {tokenTwo.name || "ETH"}
+            <small>{tokenTwo.tokenBalance || "0"}</small>
           </button>
         </div>
-        {accounts ? (
-          <button className={Style.HeroSection_box_btn}>Connect Wallet</button>
-        ) : (
+
+        {account ? (
           <button
             className={Style.HeroSection_box_btn}
-            onClick={() => {
-              222();
-            }}
+            onClick={() =>
+              singleSwapToken({
+                token1: tokenOne,
+                token2: tokenTwo,
+                swapAmount: enteredValue,
+              })
+            }
           >
-            Swap
+            {isLoading ? "Loading..." : "Swap"}
+          </button>
+        ) : (
+          <button
+            onClick={() => connectWallet()}
+            className={Style.HeroSection_box_btn}
+          >
+            Connect Wallet
           </button>
         )}
       </div>
-      {!openSetting && <Token setOpenSetting={setOpenSetting} />}
+
+      {openSetting && <Token setOpenSetting={setOpenSetting} />}
+
       {openToken && (
         <SearchToken
           openToken={setOpenToken}
-          tokens={setToken1}
-          tokenData={tokenData}
+          tokens={setTokenOne}
+          tokenData={tokenData.length > 0 ? tokenData : topTokenList}
         />
       )}
-      {openToken && (
+      {openTokensTwo && (
         <SearchToken
           openToken={setOpenTokensTwo}
-          tokens={setToken2}
-          tokenData={tokenData}
+          tokens={setTokenTwo}
+          tokenData={tokenData.length > 0 ? tokenData : topTokenList}
         />
       )}
     </div>
