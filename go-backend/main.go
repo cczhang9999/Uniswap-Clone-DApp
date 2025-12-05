@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 // Result standard response wrapper
@@ -75,9 +80,45 @@ var (
 		Asks: []Order{},
 	}
 	mockWallets = make(map[string]*Wallet)
+
+	// Database instances
+	DB  *gorm.DB
+	RDB *redis.Client
+	Ctx = context.Background()
 )
 
+func initMySQL() {
+	// Update with your actual DSN
+	dsn := "root:root@tcp(127.0.0.1:3306)/uniswap_clone?charset=utf8mb4&parseTime=True&loc=Local"
+	var err error
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Printf("Warning: Failed to connect to MySQL: %v", err)
+		return
+	}
+	log.Println("Connected to MySQL successfully")
+}
+
+func initRedis() {
+	RDB = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	_, err := RDB.Ping(Ctx).Result()
+	if err != nil {
+		log.Printf("Warning: Failed to connect to Redis: %v", err)
+		return
+	}
+	log.Println("Connected to Redis successfully")
+}
+
 func main() {
+	// Initialize databases
+	initMySQL()
+	initRedis()
+
 	r := gin.Default()
 
 	// CORS middleware
@@ -166,6 +207,7 @@ func deposit(c *gin.Context) {
 		}
 		mockWallets[req.UserId] = wallet
 	}
+
 
 	wallet.Balances[req.Currency] += req.Amount
 	c.JSON(http.StatusOK, Success("Deposit successful"))

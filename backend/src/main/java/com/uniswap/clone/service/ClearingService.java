@@ -33,17 +33,19 @@ public class ClearingService {
 
     public Wallet getWallet(String userId) {
         String cacheKey = "wallet:" + userId;
-        String cachedWallet = redisTemplate.opsForValue().get(cacheKey);
-
-
-        if (cachedWallet != null) {
-            try {
+        
+        // Try to get from Redis cache, but don't fail if Redis is unavailable
+        try {
+            String cachedWallet = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedWallet != null) {
                 return objectMapper.readValue(cachedWallet, Wallet.class);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
             }
+        } catch (Exception e) {
+            // Redis unavailable, continue without cache
+            System.err.println("Redis cache unavailable, fetching from database: " + e.getMessage());
         }
 
+        // Fetch from database
         QueryWrapper<com.uniswap.clone.entity.Balance> query = new QueryWrapper<>();
         query.eq("user_id", userId);
         List<com.uniswap.clone.entity.Balance> balanceEntities = balanceMapper.selectList(query);
@@ -60,10 +62,12 @@ public class ClearingService {
                 ));
         wallet.setBalances(balanceMap);
 
+        // Try to cache the result, but don't fail if Redis is unavailable
         try {
             redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(wallet), 10, TimeUnit.MINUTES);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            // Redis unavailable, skip caching
+            System.err.println("Redis cache unavailable, skipping cache write: " + e.getMessage());
         }
 
         return wallet;
@@ -160,6 +164,11 @@ public class ClearingService {
     }
     
     private void invalidateCache(String userId) {
-        redisTemplate.delete("wallet:" + userId);
+        try {
+            redisTemplate.delete("wallet:" + userId);
+        } catch (Exception e) {
+            // Redis unavailable, skip cache invalidation
+            System.err.println("Redis cache unavailable, skipping cache invalidation: " + e.getMessage());
+        }
     }
 }

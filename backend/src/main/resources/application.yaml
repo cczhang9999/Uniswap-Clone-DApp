@@ -4,13 +4,80 @@ spring:
     url: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: hobart
     password: 123456
+    # HikariCP 连接池配置
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      pool-name: HikariCP-Pool
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+      auto-commit: true
+
+  shardingsphere:
+    datasource:
+      names: ds0
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        username: hobart
+        password: 123456
+    rules:
+      sharding:
+        tables:
+          users:
+            actual-data-nodes: ds0.users_$->{0..1}
+            table-strategy:
+              standard:
+                sharding-column: id
+                sharding-algorithm-name: users-inline
+        sharding-algorithms:
+          users-inline:
+            type: INLINE
+            props:
+              algorithm-expression: users_$->{id % 2}
+    props:
+      sql-show: true
   data:
     redis:
-      host: 212.227.166.131
-      port: 9305
+      host: 194.164.194.118
+      port: 9502
       database: 0
       password: pass123editmelol
+      # 客户端名称
+      client-name: uniswap-exchange
+      # 连接超时时间（毫秒）
+      connect-timeout: 5000ms
+      # 读取超时时间
+      timeout: 5000ms
+      # Redis 连接池配置（Lettuce）
+      lettuce:
+        pool:
+          # 最大连接数
+          max-active: 8
+          # 最大空闲连接
+          max-idle: 8
+          # 最小空闲连接
+          min-idle: 2
+          # 连接分配最大阻塞时间（毫秒）
+          max-wait: 3000ms
+        # 关闭超时时间
+        shutdown-timeout: 100ms
 
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 开启驼峰命名转换
+    map-underscore-to-camel-case: true
+  # 全局配置
+  global-config:
+    db-config:
+      # 主键类型（AUTO 自增，ASSIGN_ID 雪花算法）
+      id-type: AUTO
+      # 逻辑删除字段
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0

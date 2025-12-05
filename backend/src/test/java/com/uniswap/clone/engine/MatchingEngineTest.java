@@ -1,11 +1,16 @@
 package com.uniswap.clone.engine;
 
+import com.uniswap.clone.mapper.BalanceMapper;
+import com.uniswap.clone.mapper.DepositMapper;
 import com.uniswap.clone.model.Order;
 import com.uniswap.clone.model.Trade;
 import com.uniswap.clone.service.ClearingService;
 import com.uniswap.clone.service.RiskEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,10 +23,20 @@ class MatchingEngineTest {
     private MatchingEngine matchingEngine;
     private ClearingService clearingService;
     private RiskEngine riskEngine;
+    
+    @Mock
+    private DepositMapper depositMapper;
+    
+    @Mock
+    private BalanceMapper balanceMapper;
+    
+    @Mock
+    private StringRedisTemplate redisTemplate;
 
     @BeforeEach
     void setUp() {
-        clearingService = new ClearingService();
+        MockitoAnnotations.openMocks(this);
+        clearingService = new ClearingService(depositMapper, balanceMapper, redisTemplate);
         riskEngine = new RiskEngine();
         matchingEngine = new MatchingEngine(clearingService, riskEngine);
     }

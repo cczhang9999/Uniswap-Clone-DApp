@@ -177,6 +177,32 @@
 - **要点**: Zookeeper 中如果所有客户端都监听同一个节点，锁释放时会唤醒所有客户端，造成网络风暴。
 - **解决**: 客户端只监听自己前一个顺序节点 (临时顺序节点)，形成链式监听。
 
+### 5.5 哨兵模式 (Sentinel)
+- **问题**: 什么是 Redis 哨兵模式？它解决了什么问题？
+- **要点**:
+    - **定义**: Redis 高可用 (HA) 解决方案。
+    - **核心功能**:
+        - **监控 (Monitoring)**: 不断检查 Master 和 Slave 是否正常运行。
+        - **通知 (Notification)**: 实例异常时，通过 API 通知管理员。
+        - **自动故障转移 (Automatic Failover)**: Master 挂了，自动将一个 Slave 提升为 Master。
+        - **配置提供者 (Configuration Provider)**: 客户端连接 Sentinel 获取 Master 地址。
+
+- **问题**: 哨兵是如何判断 Master 下线的？(主观下线 vs 客观下线)
+- **要点**:
+    - **主观下线 (SDOWN)**: 单个 Sentinel 节点在 `down-after-milliseconds` 时间内未收到 Master 的有效回复，认为 Master 挂了。
+    - **客观下线 (ODOWN)**: 多个 Sentinel (超过 Quorum 数量) 都认为 Master 挂了，才判定为客观下线，触发故障转移。
+
+- **问题**: 哨兵的 Leader 选举与故障转移流程？
+- **要点**:
+    1.  **选举 Leader**: 发现 Master 客观下线的 Sentinel 会申请成为 Leader (基于 Raft 算法)，获得多数票者当选。
+    2.  **选新 Master**: Leader 从 Slaves 中选出一个作为新 Master (筛选条件：在线、网络好、优先级高、复制偏移量大)。
+    3.  **切换**: 让其他 Slaves 复制新 Master；旧 Master 上线后变为 Slave。
+
+- **问题**: 什么是脑裂 (Split Brain)？如何解决？
+- **要点**:
+    - **现象**: 网络分区导致出现两个 Master，客户端可能向旧 Master 写入数据，恢复后数据丢失。
+    - **解决**: 配置 `min-slaves-to-write` (最少从节点数) 和 `min-slaves-max-lag` (最大延迟)，不满足条件时拒绝写入。
+
 ## 6. 消息队列 (Message Queue)
 
 ### 6.1 消息队列的作用
@@ -195,7 +221,7 @@
 ### 6.3 消息重复消费
 - **问题**: 如何保证消息不被重复消费 (幂等性)？
 - **要点**:
-    - 数据库唯一索引 (Insert ignore)。
+    - 数据库唯一索引 (Insert ignore)。对于已经消费成功的消息，本地数据库表或Redis缓存业务标识，每次处理前先进行校验，保证幂等。
     - Redis Set/ZSet 防重。
     - 状态机 (Status Machine) CAS 更新。
     - 乐观锁 (Version)。
@@ -254,7 +280,114 @@
     - **Predicate**: 路由匹配条件 (Path, Method, Header, Host 等)。
     - **Filter**: 请求处理逻辑 (AddHeader, StripPrefix, RateLimit 等)。分为 Pre (前置) 和 Post (后置) 过滤。
 
-## 7.5. Java 基础
+### 7.5 高可用设计：限流、熔断、降级
+- **问题**: 限流、熔断、降级有什么区别？它们是如何实现的？
+- **要点**:
+    - **核心区别**:
+        - **限流 (Rate Limiting)**: **流量进来时**控制，保护**自己**不被上游请求打垮。
+        - **熔断 (Circuit Breaking)**: **调用出去时**控制，保护**自己**不被下游服务拖垮（防止雪崩）。
+        - **降级 (Degradation)**: 整体资源不足时，牺牲非核心业务，保核心业务。
+
+    - **1. 限流 (Rate Limiting)**
+        - **算法**:
+            - **计数器 (Fixed Window)**: 单位时间（如1s）计数，超过阈值拒绝。缺点：临界突发流量（如0.9s和1.1s各来100请求，1s窗口内没超，但200ms内来了200请求）。
+            - **滑动窗口 (Sliding Window)**: 将时间窗口细分（如1s分10格），解决临界问题。
+            - **漏桶 (Leaky Bucket)**: 水（请求）先进桶，桶底以**恒定速率**流出。**强行削峰**，无法处理突发流量。
+            - **令牌桶 (Token Bucket)**: 以恒定速率往桶里放令牌，请求拿令牌。**允许突发流量**（只要桶里有存货）。
+        - **实现**:
+            - **单机**: Guava `RateLimiter` (基于令牌桶)。
+            - **分布式**: Redis + Lua (原子性操作计数), Sentinel, Nginx (`limit_req_zone`).
+
+    - **2. 熔断 (Circuit Breaking)**
+        - **原理**: 类似电路保险丝。
+        - **状态机 (State Machine)**:
+            - **Closed (关闭)**: 正常状态，所有请求放行。
+            - **Open (打开)**: 当失败率（或响应时间）超过阈值，熔断器打开，后续请求**直接失败**（不走网络调用），避免等待。
+            - **Half-Open (半开)**: 熔断一段时间后（休眠窗口），允许**少量**请求通过。如果成功，恢复 Closed；如果失败，继续 Open。
+        - **组件**: Hystrix (Netflix, 停止更新), Resilience4j (轻量级), Sentinel (阿里, 支持流量整形).
+
+    - **3. 降级 (Degradation)**
+        - **触发条件**: 熔断开启、接口超时、CPU/内存过高、人工干预（大促关闭非核心服务）。
+        - **策略**:
+            - **返回默认值**: `return null` 或 `return 0`。
+            - **兜底数据**: 返回缓存中的旧数据，或者静态提示文案。
+            - **静默处理**: 记录日志后直接忽略。
+
+### 7.6 Dubbo 框架
+- **问题**: Dubbo 是什么？解决了什么问题？
+- **要点**:
+    - **定义**: 阿里开源的高性能 RPC 框架，现为 Apache 顶级项目。
+    - **解决的问题**:
+        - **服务化拆分**: 将单体应用拆分为微服务，实现服务间的远程调用。
+        - **服务治理**: 提供服务注册、发现、负载均衡、容错、监控等完整的服务治理能力。
+    - **核心架构**:
+        - **Provider (服务提供者)**: 暴露服务。
+        - **Consumer (服务消费者)**: 调用远程服务。
+        - **Registry (注册中心)**: 服务注册与发现（Zookeeper, Nacos）。
+        - **Monitor (监控中心)**: 统计服务调用次数和耗时。
+        - **Container (容器)**: 服务运行容器。
+
+- **问题**: Dubbo 的服务注册与发现流程？
+- **要点**:
+    1. **Provider 启动**: 向 Registry 注册自己提供的服务。
+    2. **Consumer 启动**: 向 Registry 订阅所需的服务。
+    3. **Registry 返回**: Provider 列表给 Consumer，Consumer 缓存本地。
+    4. **Consumer 调用**: 基于负载均衡算法选择一个 Provider 发起调用。
+    5. **异步通知**: Provider 变更时，Registry 推送变更给 Consumer。
+    6. **Monitor 统计**: Consumer 和 Provider 定时发送统计数据到 Monitor。
+
+- **问题**: Dubbo 支持哪些负载均衡策略？
+- **要点**:
+    - **Random (随机)**: 默认策略，按权重随机选择。适合服务性能差异不大的场景。
+    - **RoundRobin (轮询)**: 按权重轮询。适合服务性能相近的场景。
+    - **LeastActive (最少活跃)**: 优先调用活跃数最少的 Provider（慢的 Provider 收到更少请求）。适合性能差异大的场景。
+    - **ConsistentHash (一致性哈希)**: 相同参数的请求总是发到同一 Provider。适合有状态服务。
+
+- **问题**: Dubbo 的集群容错策略有哪些？
+- **要点**:
+    - **Failover (失败自动切换)**: 默认策略，失败后重试其他 Provider。适合读操作。
+    - **Failfast (快速失败)**: 只调用一次，失败立即报错。适合非幂等写操作。
+    - **Failsafe (失败安全)**: 失败后忽略异常，返回空结果。适合日志记录等不重要操作。
+    - **Failback (失败自动恢复)**: 失败后记录请求，定时重发。适合消息通知。
+    - **Forking (并行调用)**: 同时调用多个 Provider，只要一个成功即返回。适合实时性要求高的读操作。
+    - **Broadcast (广播调用)**: 逐个调用所有 Provider，任意一个失败则失败。适合通知所有 Provider 更新缓存。
+
+- **问题**: Dubbo SPI 和 Java SPI 的区别？
+- **要点**:
+    - **Java SPI**:
+        - 一次性加载所有实现类，浪费资源。
+        - 不支持按需加载和依赖注入。
+    - **Dubbo SPI**:
+        - **按需加载**: 只加载需要的扩展实现。
+        - **自适应扩展 (Adaptive)**: 根据 URL 参数动态选择扩展实现。
+        - **依赖注入 (IOC)**: 支持扩展点之间的依赖注入。
+        - **AOP**: 支持扩展点的 Wrapper 包装（类似装饰器模式）。
+
+- **问题**: Dubbo 支持哪些序列化方式？如何选择？
+- **要点**:
+    - **Hessian**: 默认，跨语言，性能一般，兼容性好。
+    - **Kryo**: 性能高，但不支持跨语言。
+    - **Protobuf**: Google 出品，性能高，需要定义 IDL。
+    - **JSON**: 可读性好，性能差，适合调试。
+    - **选择建议**: 内网高性能场景用 Kryo；跨语言场景用 Protobuf；默认用 Hessian。
+
+- **问题**: Dubbo 如何实现服务降级？
+- **要点**:
+    - **Mock 机制**: 在 Consumer 端配置 `mock="return null"` 或自定义 Mock 类。
+    - **触发场景**:
+        - 服务调用失败（超时、异常）时返回 Mock 数据。
+        - 人工配置强制降级（通过 Dubbo Admin）。
+    - **应用**: 大促时降级非核心服务，返回默认值或缓存数据。
+
+- **问题**: Dubbo 的异步调用是如何实现的？
+- **要点**:
+    - **原理**: 基于 Netty 的 NIO 异步通信 + Future/CompletableFuture。
+    - **配置方式**:
+        - `@DubboReference(async = true)`: 异步调用。
+        - 通过 `RpcContext.getContext().getFuture()` 获取 Future。
+    - **优势**: 不阻塞调用线程，提高吞吐量。适合调用多个服务并行处理的场景。
+
+## 7.7. Java 基础
     *   **String**: final 修饰，不可继承，不可变。
 *   **StringBuilder vs StringBuffer**: Builder 非线程安全 (快)；Buffer 线程安全 (慢)。
 *   **List vs Map**: List 有序可重复；Map 键值对，Key 唯一。
@@ -282,24 +415,6 @@
 *   **水平切分**: 按行拆分 (分库分表, 时间切分)。
 *   **中间件**: Mycat, ShardingSphere。
 
-回答模版：我处理技术问题的通用流程
-在工作中遇到一个复杂问题时，我通常会遵循以下五个步骤来处理：
-
-1. 明确定义与复现 (Clarify & Reproduce)
-动作: 首先，我会确保自己完全理解了问题。如果是 Bug，我会尝试在本地或测试环境复现它；如果是新需求，我会与产品经理或业务方反复确认边界条件。
-话术: “首先，我不急于动手写代码，而是先确认问题的复现步骤和业务影响范围。比如在之前的体育项目中，有一次发现注单同步延迟，我先确认是所有商户都延迟还是特定商户延迟。”
-2. 分析与定位 (Analyze & Locate)
-动作: 利用日志、监控工具 (如 Prometheus, Grafana, ELK) 和代码调试来定位根本原因 (Root Cause)。
-话术: “我会查看错误日志和监控指标。如果是性能问题，我会看 CPU、内存和 GC 情况；如果是逻辑错误，我会通过断点或日志追踪数据流。在那个项目中，我通过监控发现是某一大户注单量突增导致了数据库死锁。”
-3. 制定方案与评估 (Design & Evaluate)
-动作: 找出原因后，我会提出 2-3 种解决方案，并评估它们的优缺点（时间成本、风险、性能影响）。对于重大变更，我会组织团队进行技术评审。
-话术: “针对数据库压力问题，我考虑了两种方案：一是直接扩容数据库（成本高，治标不治本），二是引入消息队列进行削峰填谷（开发成本有，但能彻底解决）。综合评估后，我选择了方案二。”
-4. 执行与验证 (Execute & Verify)
-动作: 编写代码，并进行充分的单元测试和集成测试。如果是高并发场景，还会进行压力测试。
-话术: “在编码实现后，我不仅跑通了单元测试，还使用 JMeter 模拟了生产环境的流量进行压测，确保修复方案在高负载下依然稳定。”
-5. 复盘与文档化 (Review & Document)
-动作: 问题解决后，我会编写技术文档（如 Wiki），记录问题原因和解决过程，防止同事踩坑。如果有必要，我会优化监控报警规则。
-话术: “最后，我将这次的问题和解决方案整理成了文档分享给团队，并添加了针对类似场景的监控报警，确保下次能更早发现问题。”
 
 请举一个你处理过的棘手技术问题的例子。
 
@@ -337,3 +452,213 @@
     *   **推荐问**: "咱们团队目前主要的技术栈是什么？"、"您对这个岗位的期望是什么？"、"团队目前面临的最大技术挑战是什么？"
     *   **不推荐问**: "薪资多少？" (HR 面才问)、"我有通过吗？"、"太简单/太傻的问题"。
 
+
+解决：每次拉取的时间窗口向前回溯。
+例如：上次拉取到 T，本次拉取范围应为 [T - buffer_time, Now]。
+buffer_time 可以设为 1-5 分钟，取决于数据库事务最大延迟。
+注意：这会导致重复拉取，因此必须在处理端做**幂等性（Idempotency）**校验（通过 Order ID 去重）
+
+
+### 5.5 线上实战问题排查
+
+#### Q1: 遇到过 POI 导出导致内存溢出 (OOM) 吗？怎么解决的？
+*   **原因**：Apache POI 的默认 `XSSFWorkbook` 会将整个 Excel DOM 加载到内存。数据量大（如 >5w 行）时，对象极多，导致 Heap 空间不足。
+*   **解决方案**：
+    1.  **使用 SXSSF (Streaming API)**：
+        *   使用 `SXSSFWorkbook` 替代 `XSSFWorkbook`。
+        *   **原理**：利用滑动窗口（Sliding Window），默认只在内存保留 100 行，其余行写入磁盘临时文件。
+        *   **效果**：内存占用极低，不再随数据量线性增长。
+    2.  **使用 EasyExcel (阿里开源)**：
+        *   **原理**：基于 SAX 的事件驱动模型解析，一行一行处理，不一次性加载。
+        *   **优势**：更省内存，API 更简单，避免了 POI 的繁琐操作。
+
+#### Q2: 线上 CPU 飙高或频繁 Full GC 怎么排查？
+*   **排查套路**：
+    1.  **Top 命令**：`top` 找进程 PID -> `top -Hp PID` 找线程 TID -> `printf "%x" TID` 转 16 进制。
+    2.  **Jstack 定位**：`jstack PID | grep <16进制TID> -A 20` 查看该线程在干嘛。
+        *   如果是 `VM Thread`，说明是 GC 在忙。
+        *   如果是业务线程，看具体卡在哪个方法。
+    3.  **Jstat 观察 GC**：`jstat -gcutil PID 1000`。
+        *   如果 `FGC` (Full GC 次数) 飙升，`Old` (老年代) 占用率居高不下，说明是内存泄漏或大对象。
+    4.  **Dump 分析**：`jmap -dump:format=b,file=dump.hprof PID`，用 MAT 或 VisualVM 分析，找出占用内存最大的对象。
+
+#### Q3: 怎么排查和解决死锁 (Deadlock)？
+*   **现象**：程序无响应，不报错，日志停止滚动。
+*   **排查**：
+    *   直接使用 `jstack <PID>`。
+    *   JVM 会在输出末尾自动打印 `Found one Java-level deadlock`，并列出涉及的线程和锁。
+*   **解决**：
+    *   找到代码位置，分析锁获取顺序。
+    *   **破局**：保证所有线程**以相同的顺序加锁**（例如按 ID 从小到大加锁），或者使用 `Lock.tryLock(timeout)` 避免无限等待。
+
+
+     ### 1.6 JVM 调优实战
+
+#### Q1: 说说你是如何进行 JVM 调优的？（方法论）
+*   **核心观点**: 
+    1.  **大多数情况下不需要调优**，JDK 8+ 的默认配置已经很优秀。
+    2.  调优的目标通常是：**降低延迟** (减少 STW 时间) 或 **提高吞吐量**。
+*   **调优步骤**:
+    1.  **监控 (Monitor)**: 结合 Prometheus + Grafana 或 `jstat` 监控 GC 频率和耗时。
+        *   *警报线*: Minor GC 频繁（如每秒一次），Full GC 频繁（如几分钟一次，正常应几天一次）。
+    2.  **分析 (Analyze)**: 
+        *   如果是 Full GC 频繁，分析是 **内存泄漏** 还是 **老年代空间不足**。
+        *   如果是 Minor GC 频繁，看是否 **新生代太小**。
+    3.  **调整 (Tune)**: 修改 JVM 参数（见下文）。
+    4.  **验证 (Verify)**: 灰度发布，对比调优前后的 GC 指标和接口响应时间 (RT)。
+
+#### Q2: 生产环境常用的 JVM 参数有哪些？
+*   **堆内存设置**:
+    *   `-Xms4g -Xmx4g`: 设置初始堆和最大堆大小。**技巧：通常设为相同**，避免 JVM 在运行时动态扩容/缩容产生的性能开销（通常设为物理内存的 60%-80%）。
+*   **新生代设置**:
+    *   `-Xmn2g`: 设置新生代大小。**技巧：通常设为堆内存的 1/3 到 1/2**。
+        *   *太大*: 老年代变小，容易 Full GC；Minor GC 单次耗时变长。
+        *   *太小*: Minor GC 极其频繁，对象来不及回收就晋升到老年代，导致老年代填满触发 Full GC。
+*   **元空间 (Metaspace)**:
+    *   `-XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=256m`: 避免元空间动态扩容。
+*   **垃圾收集器**:
+    *   `-XX:+UseG1GC`: 推荐 JDK 8+ 大堆（>4G）使用 G1。
+    *   `-XX:MaxGCPauseMillis=200`: (G1专用) 设定目标停顿时间为 200ms，G1 会尽力满足。
+*   **Dump 配置 (必配)**:
+    *   `-XX:+HeapDumpOnOutOfMemoryError`: OOM 时自动生成堆转储文件。
+    *   `-XX:HeapDumpPath=/data/logs/`: 指定 Dump 文件路径。
+
+#### Q3: 讲一个你做过的 JVM 调优案例？（实战话术）
+*   **背景**: "之前的项目高峰期，我们发现核心用户获取账号信息服务在高峰期偶尔会出现接口响应尖刺（Spike），耗时超过 1 秒。"
+*   **分析**: 
+    "我查看 GC 日志，发现 **Full GC 大约每半小时发生一次**。进一步分析发现，是因为新生代设置得比较小（默认比例 1:2），导致大量短生命周期的订单对象在 Minor GC 时无法被回收（Survivor 区放不下），被迫提前晋升到老年代。"
+*   **解决**: 
+    "我调整了参数，将新生代大小 (`-Xmn`) 扩大了 50%（从 1G 调到 1.5G），同时使用了 G1 收集器并设置最大停顿时间为 100ms。"
+*   **结果**: 
+    "上线后，Minor GC 频率略微降低，但 **Full GC 变成了几天才发生一次**，接口响应非常平稳，再没有出现过尖刺。"
+
+
+    ### 2.2.1 synchronized 详解
+
+#### Q1: synchronized 的底层原理是什么？
+*   **字节码层面**:
+    *   **代码块**: 使用 `monitorenter` 和 `monitorexit` 指令。
+    *   **方法**: 使用 `ACC_SYNCHRONIZED` 标志。
+*   **JVM 层面 (Monitor)**:
+    *   每个对象都关联一个 Monitor (监视器锁)。
+    *   当线程尝试获取锁时，会尝试成为 Monitor 的 Owner。
+    *   Monitor 内部维护了 `EntryList` (等待锁的线程) 和 `WaitSet` (调用 wait 被阻塞的线程)。
+
+#### Q2: 什么是锁升级 (Lock Coarsening)？
+*   **背景**: JDK 1.6 之前 synchronized 是重量级锁，性能差。1.6 之后引入了锁升级机制，根据竞争情况动态调整锁的状态。
+*   **升级过程**:
+    1.  **偏向锁 (Biased Lock)**: 只有一个线程访问锁。锁对象头记录该线程 ID，下次该线程再来无需同步。
+    2.  **轻量级锁 (Lightweight Lock)**: 有第二个线程来竞争（无锁竞争）。通过 CAS 自旋尝试获取锁。
+    3.  **重量级锁 (Heavyweight Lock)**: 竞争激烈（CAS 自旋失败或多个线程竞争）。阻塞线程，进入操作系统内核态，性能开销大。
+*   **注意**: 锁只能升级，不能降级。
+
+#### Q3: synchronized 和 ReentrantLock 的核心区别？
+| 特性 | synchronized | ReentrantLock |
+| :--- | :--- | :--- |
+| **实现层面** | JVM 关键字 (C++ 实现) | JDK API (Java 实现) |
+| **锁释放** | 自动释放 (异常也释放) | 必须手动 `unlock()` (通常在 finally 中) |
+| **锁类型** | 非公平锁 | 默认非公平，可设为公平锁 |
+| **等待可中断** | 不支持 | 支持 (`lockInterruptibly`) |
+| **条件变量** | 单一 Condition (`wait/notify`) | 支持多个 Condition (`newCondition`) |
+
+
+## 8. Netty 与网络编程
+
+### 8.1 IO 模型
+- **问题**: BIO, NIO, AIO 的区别？
+- **要点**:
+    - **BIO (Blocking IO)**: 同步阻塞。一个连接一个线程，并发能力低。
+    - **NIO (Non-blocking IO)**: 同步非阻塞。基于 Selector (多路复用器)，一个线程处理多个连接 (Channel)。
+    - **AIO (Asynchronous IO)**: 异步非阻塞。基于回调机制，操作系统完成后通知应用。
+
+### 8.2 Netty 核心
+- **问题**: 为什么选择 Netty 而不是原生 NIO？Netty 的高性能体现在哪？
+- **要点**:
+    - **API 易用**: 解决了 NIO 繁琐的 Selector 操作和 Bug (如 Epoll 空轮询)。
+    - **零拷贝 (Zero Copy)**: 使用 `DirectBuffer` (堆外内存) 和 `FileRegion` (sendfile)，减少内核态到用户态的数据拷贝。
+    - **Reactor 模型**: 主从 Reactor 多线程模型 (BossGroup 接收连接, WorkerGroup 处理读写)。
+    - **对象池**: Recycler 重用对象，减少 GC。
+
+- **问题**: 什么是 TCP 粘包/拆包？Netty 怎么解决？
+- **要点**:
+    - **原因**: TCP 是流式协议，没有消息边界。
+    - **解决**:
+        - **定长**: `FixedLengthFrameDecoder`。
+        - **分隔符**: `DelimiterBasedFrameDecoder`。
+        - **长度字段**: `LengthFieldBasedFrameDecoder` (最常用，消息头包含长度)。
+
+
+## 9. 设计模式 (Design Patterns)
+
+### 9.1 常用模式
+- **单例模式 (Singleton)**: 双重检查锁 (DCL) + volatile。
+- **工厂模式 (Factory)**: Spring IOC 容器就是大工厂。解耦对象的创建与使用。
+- **代理模式 (Proxy)**: Spring AOP, RPC 远程调用。
+- **策略模式 (Strategy)**: 替代大量的 `if-else`。例如：支付渠道 (AliPay, WeChatPay) 实现同一接口，根据 Context 选择策略。
+- **模板方法 (Template Method)**: `JdbcTemplate`, `RedisTemplate`。定义流程骨架，子类实现细节。
+- **观察者模式 (Observer)**: Spring Event (`ApplicationListener`), Zookeeper Watcher。
+
+### 9.2 实战题
+- **问题**: 你在项目中用过哪些设计模式？
+- **话术**: "在重构用户模块时，我使用了**策略模式**来处理不同的用户登录场馆，避免了大量的 `if-else` 判断。同时使用**工厂模式**配合 Spring 的 `Map<String, Service>` 自动注入来获取对应的策略实例，使代码扩展性极强，新增渠道只需加一个类即可。"
+
+## 11. 高频系统设计题
+
+### 11.1 分布式 ID 生成
+- **问题**: 如何生成全局唯一的 ID？
+- **方案**:
+    1.  **UUID**: 简单，但无序、太长、影响索引性能。
+    2.  **数据库自增**: 性能瓶颈，依赖 DB。
+    3.  **Redis incr**: 性能高，需维护 Redis 高可用。
+    4.  **雪花算法 (Snowflake)**: 推荐。
+        - **结构**: 1位符号 + 41位时间戳 + 10位机器ID + 12位序列号。
+        - **优点**: 本地生成 (高性能)，趋势递增 (对索引友好)。
+        - **缺点**: 依赖机器时钟 (时钟回拨问题)。
+
+### 11.2 秒杀系统设计
+- **核心挑战**: 瞬时高并发，防止超卖，防止拖垮下游。
+- **设计要点**:
+    1.  **前端**: 按钮置灰，静态资源 CDN 缓存。
+    2.  **网关**: 限流 (Rate Limiting)，黑名单拦截。
+    3.  **缓存**: Redis 预减库存 (Lua 脚本保证原子性)。
+    4.  **MQ**: 削峰填谷，异步下单。
+    5.  **数据库**: 乐观锁 (`update stock set num = num - 1 where num > 0`)。
+
+  ## 12. Flink & 实时数仓 (Real-time Data Warehouse)
+
+### 12.1 FlinkSQL 数据同步 (CDC)
+- **问题**: 如何使用 FlinkSQL 实现 MySQL 到其他存储（如 ES, Kafka, Doris）的实时同步？
+- **要点**:
+    - **CDC (Change Data Capture)**: 使用 `flink-connector-mysql-cdc` 组件，底层基于 Debezium 监听 MySQL Binlog。
+    - **流程**:
+        1.  **Source**: 定义 MySQL CDC 表 (`CREATE TABLE source_table ... WITH ('connector' = 'mysql-cdc'...)`)。
+        2.  **Sink**: 定义目标表 (如 Elasticsearch, Kafka)。
+        3.  **Sync**: 执行 `INSERT INTO sink_table SELECT * FROM source_table`。
+    - **优势**: 支持**全量+增量**自动切换，无需锁表；支持**断点续传**。
+
+### 12.2 核心机制
+- **问题**: Flink 如何保证端到端的 Exactly-Once (精确一次)？
+- **要点**:
+    - **内部**: 依赖 **Checkpoint** (基于 Chandy-Lamport 算法的分布式快照) 保存状态。
+    - **端到端**: 
+        - **Source**: 支持数据重放 (如 Kafka Offset)。
+        - **Sink**: 支持事务写入 (如 Kafka 的事务, MySQL 的 XA 事务) 或 幂等性写入。
+        - **机制**: **二阶段提交 (2PC)**。Checkpoint 完成时，协调 Sink 提交事务。
+
+- **问题**: 什么是反压 (Backpressure)？如何排查和解决？
+- **要点**:
+    - **现象**: 下游消费速度 < 上游生产速度，导致数据堆积在网络 Buffer 中，Checkpoint 可能会超时失败。
+    - **排查**: Flink Web UI -> Backpressure 面板 (显示 High/Normal)。
+    - **解决**:
+        - **增加并发**: 提高算子并行度 (Parallelism)。
+        - **优化 Sink**: 开启批量写入 (Batch Flush)，优化数据库性能。
+        - **开启 MiniBatch**: 减少状态访问次数。
+
+### 12.3 常见问题
+- **问题**: FlinkSQL 遇到数据倾斜怎么办？
+- **要点**:
+    - **表现**: 某个并行度处理的数据量远超其他，导致单点延迟。
+    - **解决**:
+        - **LocalGlobal 聚合**: 开启 `table.exec.mini-batch.enabled` 和 `table.exec.mini-batch.allow-latency`，类似 MapReduce 的 Combiner 预聚合。
+        - **Split Distinct**: 将 `COUNT(DISTINCT key)` 拆分为两层聚合。
+        - **加盐 (Salt)**: 在 Key 上拼接随机前缀打散数据，聚合后再去掉前缀。  
