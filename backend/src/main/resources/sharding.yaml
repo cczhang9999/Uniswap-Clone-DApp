@@ -1,0 +1,25 @@
+dataSources:
+  ds0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: hobart
+    password: 123456
+
+rules:
+- !SHARDING
+  tables:
+    users:
+      actualDataNodes: ds0.users_$->{0..2}
+      tableStrategy:
+        standard:
+          shardingColumn: id
+          shardingAlgorithmName: users-inline
+  shardingAlgorithms:
+    users-inline:
+      type: INLINE
+      props:
+        algorithm-expression: users_$->{id % 3}
+
+props:
+  sql-show: true

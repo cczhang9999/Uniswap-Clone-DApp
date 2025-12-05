@@ -1,46 +1,7 @@
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: hobart
-    password: 123456
-    # HikariCP 连接池配置
-    type: com.zaxxer.hikari.HikariDataSource
-    hikari:
-      pool-name: HikariCP-Pool
-      minimum-idle: 5
-      maximum-pool-size: 20
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      connection-test-query: SELECT 1
-      auto-commit: true
-
-  shardingsphere:
-    datasource:
-      names: ds0
-      ds0:
-        type: com.zaxxer.hikari.HikariDataSource
-        driver-class-name: com.mysql.cj.jdbc.Driver
-        jdbc-url: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-        username: hobart
-        password: 123456
-    rules:
-      sharding:
-        tables:
-          users:
-            actual-data-nodes: ds0.users_$->{0..1}
-            table-strategy:
-              standard:
-                sharding-column: id
-                sharding-algorithm-name: users-inline
-        sharding-algorithms:
-          users-inline:
-            type: INLINE
-            props:
-              algorithm-expression: users_$->{id % 2}
-    props:
-      sql-show: true
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:sharding.yaml
   data:
     redis:
       host: 194.164.194.118

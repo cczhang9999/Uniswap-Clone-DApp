@@ -7,7 +7,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+
 @SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public class SchemaInitTest {
 
     @Autowired
@@ -32,9 +35,18 @@ public class SchemaInitTest {
                 email VARCHAR(255)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """;
+        
+        String createTableSql2 = """
+            CREATE TABLE IF NOT EXISTS users_2 (
+                id BIGINT PRIMARY KEY,
+                name VARCHAR(255),
+                email VARCHAR(255)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """;
 
         jdbcTemplate.execute(createTableSql0);
         jdbcTemplate.execute(createTableSql1);
-        System.out.println("Tables users_0 and users_1 created successfully.");
+        jdbcTemplate.execute(createTableSql2);
+        System.out.println("Tables users_0, users_1, and users_2 created successfully.");
     }
 }
