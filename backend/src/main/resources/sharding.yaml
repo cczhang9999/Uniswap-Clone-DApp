@@ -2,9 +2,21 @@ dataSources:
   ds0:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
-    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
     username: hobart
     password: 123456
+    # HikariCP connection pool properties
+    data-source-properties:
+      cachePrepStmts: true
+      prepStmtCacheSize: 250
+      prepStmtCacheSqlLimit: 2048
+    connectionTimeout: 30000
+    validationTimeout: 5000
+    idleTimeout: 600000
+    maxLifetime: 1800000
+    maximumPoolSize: 10
+    minimumIdle: 2
+    keepaliveTime: 300000
 
 rules:
 - !SHARDING
@@ -15,6 +27,11 @@ rules:
         standard:
           shardingColumn: id
           shardingAlgorithmName: users-inline
+    # Non-sharded tables - single table in ds0
+    balances:
+      actualDataNodes: ds0.balances
+    deposits:
+      actualDataNodes: ds0.deposits
   shardingAlgorithms:
     users-inline:
       type: INLINE

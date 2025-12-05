@@ -5,6 +5,7 @@ import com.uniswap.clone.mapper.DepositMapper;
 import com.uniswap.clone.model.Order;
 import com.uniswap.clone.model.Trade;
 import com.uniswap.clone.service.ClearingService;
+import com.uniswap.clone.service.RedisLockService;
 import com.uniswap.clone.service.RiskEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,11 +33,14 @@ class MatchingEngineTest {
     
     @Mock
     private StringRedisTemplate redisTemplate;
+    
+    @Mock
+    private RedisLockService redisLockService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        clearingService = new ClearingService(depositMapper, balanceMapper, redisTemplate);
+        clearingService = new ClearingService(depositMapper, balanceMapper, redisTemplate, redisLockService);
         riskEngine = new RiskEngine();
         matchingEngine = new MatchingEngine(clearingService, riskEngine);
     }

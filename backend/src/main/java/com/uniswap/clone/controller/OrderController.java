@@ -53,8 +53,8 @@ public class OrderController {
     
     @PostMapping("/balance/deposit")
     public com.uniswap.clone.common.Result<String> deposit(@RequestBody DepositRequest request) {
-        clearingService.deposit(request.getUserId(), request.getCurrency(), request.getAmount());
-        return com.uniswap.clone.common.Result.success("Deposit successful");
+            clearingService.deposit(request.getUserId(), request.getCurrency(), request.getAmount());
+            return com.uniswap.clone.common.Result.success("Deposit successful");
     }
     
     static class DepositRequest {

@@ -12,9 +12,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @Configuration
 public class RedisTestConfig {
     
-    // Commented out to prevent startup failure when Redis is unavailable
-    // Uncomment to test Redis connection
-    /*
+    
+    // Enable Redis connection test to verify RESP2 fix
     @Bean
     public CommandLineRunner testRedisConnection(StringRedisTemplate redisTemplate) {
         return args -> {
@@ -44,5 +43,4 @@ public class RedisTestConfig {
             }
         };
     }
-    */
 }

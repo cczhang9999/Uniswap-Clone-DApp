@@ -21,14 +21,17 @@ public class ClearingService {
     private final com.uniswap.clone.mapper.DepositMapper depositMapper;
     private final com.uniswap.clone.mapper.BalanceMapper balanceMapper;
     private final StringRedisTemplate redisTemplate;
+    private final RedisLockService redisLockService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ClearingService(com.uniswap.clone.mapper.DepositMapper depositMapper, 
                            com.uniswap.clone.mapper.BalanceMapper balanceMapper,
-                           StringRedisTemplate redisTemplate) {
+                           StringRedisTemplate redisTemplate,
+                           RedisLockService redisLockService) {
         this.depositMapper = depositMapper;
         this.balanceMapper = balanceMapper;
         this.redisTemplate = redisTemplate;
+        this.redisLockService = redisLockService;
     }
 
     public Wallet getWallet(String userId) {
@@ -73,21 +76,43 @@ public class ClearingService {
         return wallet;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deposit(String userId, String currency, BigDecimal amount) {
-        com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
-        balance.setAvailable(balance.getAvailable().add(amount));
-        balanceMapper.updateById(balance);
-
-        // Persist deposit record
-        com.uniswap.clone.entity.Deposit deposit = new com.uniswap.clone.entity.Deposit();
-        deposit.setUserId(userId);
-        deposit.setCurrency(currency);
-        deposit.setAmount(amount);
-        deposit.setTimestamp(System.currentTimeMillis());
-        depositMapper.insert(deposit);
+        // Create lock key based on userId and currency
+        String lockKey = "deposit:lock:" + userId + ":" + currency;
         
-        invalidateCache(userId);
+        // Try to acquire distributed lock (wait up to 5 seconds)
+        RedisLockService.LockResult lockResult = redisLockService.tryLock(lockKey, 5, TimeUnit.SECONDS);
+        
+        // If Redis is unavailable, log warning and continue without lock (for development)
+        // In production, you should ensure Redis is always available
+        if (!lockResult.isAcquired()) {
+            System.err.println("WARNING: Failed to acquire distributed lock for deposit. " +
+                             "Proceeding without lock. userId=" + userId + ", currency=" + currency);
+            // Continue without lock - not ideal but allows development to proceed
+        }
+        
+        try {
+            // Execute deposit logic within lock (or without if Redis unavailable)
+            com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
+            balance.setAvailable(balance.getAvailable().add(amount));
+            balanceMapper.updateById(balance);
+
+            // Persist deposit record
+            com.uniswap.clone.entity.Deposit deposit = new com.uniswap.clone.entity.Deposit();
+            deposit.setUserId(userId);
+            deposit.setCurrency(currency);
+            deposit.setAmount(amount);
+            deposit.setTimestamp(System.currentTimeMillis());
+            depositMapper.insert(deposit);
+            
+            invalidateCache(userId);
+        } finally {
+            // Always try to release the lock if it was acquired
+            if (lockResult.isAcquired()) {
+                redisLockService.unlock(lockKey, lockResult.getLockValue());
+            }
+        }
     }
 
     @Transactional
