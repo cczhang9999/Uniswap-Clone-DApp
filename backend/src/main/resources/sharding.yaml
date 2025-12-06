@@ -32,6 +32,8 @@ rules:
       actualDataNodes: ds0.balances
     deposits:
       actualDataNodes: ds0.deposits
+    trades:
+      actualDataNodes: ds0.trades
   shardingAlgorithms:
     users-inline:
       type: INLINE

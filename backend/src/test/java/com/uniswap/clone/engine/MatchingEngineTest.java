@@ -35,12 +35,15 @@ class MatchingEngineTest {
     private StringRedisTemplate redisTemplate;
     
     @Mock
+    private com.uniswap.clone.mapper.TradeMapper tradeMapper;
+    
+    @Mock
     private RedisLockService redisLockService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        clearingService = new ClearingService(depositMapper, balanceMapper, redisTemplate, redisLockService);
+        clearingService = new ClearingService(depositMapper, balanceMapper, tradeMapper, redisTemplate, redisLockService);
         riskEngine = new RiskEngine();
         matchingEngine = new MatchingEngine(clearingService, riskEngine);
     }

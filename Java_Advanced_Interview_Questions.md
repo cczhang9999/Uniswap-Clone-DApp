@@ -23,6 +23,374 @@
 - **问题**: 生产环境 CPU 飙高或 OOM 如何排查？
 - **要点**: `top` 命令定位进程 -> `top -Hp` 定位线程 -> `jstack` 导出线程栈分析（死锁/死循环）。OOM 使用 `jmap` dump 堆内存 -> MAT/VisualVM 分析对象引用。
 
+## 1A. Java 8-23 新特性面试题
+
+### 1A.1 Java 8 核心特性
+
+#### Q1: Lambda 表达式和函数式接口是什么？
+- **Lambda 表达式**:
+    - **定义**: 匿名函数的简洁写法，`(参数) -> { 方法体 }`
+    - **示例**: `list.forEach(item -> System.out.println(item))`
+- **函数式接口**:
+    - **定义**: 只有一个抽象方法的接口，可用 `@FunctionalInterface` 标注
+    - **常用接口**:
+        - `Function<T,R>`: 接受 T 返回 R，`R apply(T t)`
+        - `Predicate<T>`: 接受 T 返回 boolean，`boolean test(T t)`
+        - `Consumer<T>`: 接受 T 无返回，`void accept(T t)`
+        - `Supplier<T>`: 无参数返回 T，`T get()`
+
+#### Q2: Stream API 的核心操作有哪些？
+- **中间操作 (Intermediate)**:
+    - `filter()`: 过滤，`stream.filter(x -> x > 10)`
+    - `map()`: 映射转换，`stream.map(String::toUpperCase)`
+    - `flatMap()`: 扁平化映射，`stream.flatMap(Collection::stream)`
+    - `sorted()`: 排序
+    - `distinct()`: 去重
+- **终端操作 (Terminal)**:
+    - `collect()`: 收集结果，`collect(Collectors.toList())`
+    - `forEach()`: 遍历
+    - `reduce()`: 归约，`reduce(0, Integer::sum)`
+    - `count()`, `anyMatch()`, `allMatch()`, `findFirst()`
+
+#### Q3: Optional 类的作用是什么？如何使用？
+- **作用**: 避免 `NullPointerException`，优雅处理空值
+- **常用方法**:
+    - `Optional.of(value)`: 创建（value 不能为 null）
+    - `Optional.ofNullable(value)`: 创建（value 可为 null）
+    - `isPresent()`: 判断是否有值
+    - `ifPresent(Consumer)`: 有值时执行
+    - `orElse(defaultValue)`: 无值时返回默认值
+    - `orElseGet(Supplier)`: 无值时通过 Supplier 生成
+    - `orElseThrow()`: 无值时抛异常
+- **示例**:
+```java
+Optional<String> opt = Optional.ofNullable(getName());
+String result = opt.orElse("Unknown");
+```
+
+#### Q4: 接口的 default 方法和 static 方法？
+- **default 方法**: 接口可以有默认实现，解决接口升级问题
+```java
+interface MyInterface {
+    default void log(String msg) {
+        System.out.println(msg);
+    }
+}
+```
+- **static 方法**: 接口可以有静态方法
+```java
+interface Utils {
+    static int add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+#### Q5: 新的日期时间 API (java.time)？
+- **核心类**:
+    - `LocalDate`: 日期（年月日）
+    - `LocalTime`: 时间（时分秒）
+    - `LocalDateTime`: 日期时间
+    - `ZonedDateTime`: 带时区的日期时间
+    - `Instant`: 时间戳
+    - `Duration`: 时间间隔
+    - `Period`: 日期间隔
+- **优势**: 不可变、线程安全，API 更清晰（替代 `Date` 和 `Calendar`）
+
+### 1A.2 Java 9-11 新特性
+
+#### Q1: Java 9 模块化系统 (JPMS) 是什么？
+- **定义**: Java Platform Module System，通过 `module-info.java` 定义模块
+- **关键字**:
+    - `module`: 定义模块名
+    - `requires`: 依赖其他模块
+    - `exports`: 导出包给其他模块使用
+    - `opens`: 允许反射访问
+- **优势**: 更好的封装性、减少 JAR Hell、提升启动性能
+
+#### Q2: JShell 是什么？
+- **定义**: Java 的 REPL (Read-Eval-Print Loop) 工具
+- **作用**: 交互式执行 Java 代码，快速验证代码片段
+- **使用**: 命令行输入 `jshell` 启动
+
+#### Q3: Java 10 的 var 关键字？
+- **定义**: 局部变量类型推断
+- **示例**:
+```java
+var list = new ArrayList<String>();  // 推断为 ArrayList<String>
+var map = Map.of("key", "value");    // 推断为 Map<String, String>
+```
+- **限制**: 只能用于局部变量，不能用于字段、方法参数、返回类型
+
+#### Q4: Java 11 的新特性？
+- **String 新方法**:
+    - `isBlank()`: 判断是否为空或只包含空白字符
+    - `lines()`: 按行分割返回 Stream
+    - `strip()`, `stripLeading()`, `stripTrailing()`: 去除空白（支持 Unicode）
+    - `repeat(n)`: 重复字符串 n 次
+- **Files 新方法**:
+    - `Files.readString(path)`: 读取文件为字符串
+    - `Files.writeString(path, content)`: 写入字符串到文件
+- **HTTP Client API**: 标准化的 HTTP 客户端（替代 HttpURLConnection）
+```java
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com"))
+    .build();
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+
+### 1A.3 Java 12-17 新特性
+
+#### Q1: Switch 表达式 (Java 12-14)？
+- **新语法**: 支持返回值，使用 `->` 箭头
+```java
+// 传统 switch
+String result;
+switch (day) {
+    case MONDAY:
+    case FRIDAY:
+        result = "Work";
+        break;
+    default:
+        result = "Rest";
+}
+
+// Switch 表达式
+String result = switch (day) {
+    case MONDAY, FRIDAY -> "Work";
+    case SATURDAY, SUNDAY -> "Rest";
+    default -> "Unknown";
+};
+```
+- **yield 关键字**: 在代码块中返回值
+```java
+int result = switch (value) {
+    case 1 -> {
+        System.out.println("One");
+        yield 100;
+    }
+    default -> 0;
+};
+```
+
+#### Q2: Text Blocks (Java 13-15)？
+- **定义**: 多行字符串字面量，使用 `"""` 包围
+```java
+String json = """
+    {
+        "name": "John",
+        "age": 30
+    }
+    """;
+```
+- **优势**: 无需转义引号和换行符，提高可读性
+
+#### Q3: Records (Java 14-16)？
+- **定义**: 不可变数据类，自动生成构造器、getter、equals、hashCode、toString
+```java
+record Point(int x, int y) {}
+
+// 等价于
+public final class Point {
+    private final int x;
+    private final int y;
+    
+    public Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+    
+    public int x() { return x; }
+    public int y() { return y; }
+    // + equals, hashCode, toString
+}
+```
+- **使用场景**: DTO、值对象、不可变数据传输
+
+#### Q4: Sealed Classes (Java 15-17)？
+- **定义**: 密封类，限制哪些类可以继承/实现
+```java
+public sealed class Shape permits Circle, Rectangle, Triangle {}
+
+final class Circle extends Shape {}
+final class Rectangle extends Shape {}
+final class Triangle extends Shape {}
+```
+- **作用**: 更精确的类型控制，配合模式匹配使用
+
+#### Q5: Pattern Matching for instanceof (Java 16)？
+- **传统写法**:
+```java
+if (obj instanceof String) {
+    String str = (String) obj;
+    System.out.println(str.length());
+}
+```
+- **新写法**: 自动类型转换
+```java
+if (obj instanceof String str) {
+    System.out.println(str.length());
+}
+```
+
+### 1A.4 Java 17-21 LTS 新特性
+
+#### Q1: Java 17 为什么重要？
+- **LTS 版本**: 长期支持版本（至 2029 年）
+- **核心特性**:
+    - Sealed Classes (正式版)
+    - Pattern Matching for instanceof (正式版)
+    - 移除实验性 AOT 和 JIT 编译器
+    - 强封装 JDK 内部 API
+
+#### Q2: Pattern Matching for switch (Java 17-21)？
+```java
+// Java 17+
+String result = switch (obj) {
+    case Integer i -> "Integer: " + i;
+    case String s -> "String: " + s;
+    case null -> "Null";
+    default -> "Unknown";
+};
+
+// Java 21: 支持 when 守卫
+String result = switch (obj) {
+    case String s when s.length() > 5 -> "Long string";
+    case String s -> "Short string";
+    default -> "Not a string";
+};
+```
+
+#### Q3: Virtual Threads (Java 19-21)？
+- **定义**: 虚拟线程（轻量级线程），由 JVM 管理而非操作系统
+- **优势**:
+    - 创建成本极低（百万级线程）
+    - 阻塞不占用系统线程
+    - 简化异步编程（同步代码写法，异步执行效果）
+- **使用**:
+```java
+// 传统线程
+Thread.ofPlatform().start(() -> {
+    System.out.println("Platform thread");
+});
+
+// 虚拟线程
+Thread.ofVirtual().start(() -> {
+    System.out.println("Virtual thread");
+});
+
+// ExecutorService
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    executor.submit(() -> {
+        // 任务代码
+    });
+}
+```
+- **适用场景**: 高并发 I/O 密集型应用（Web 服务、数据库连接）
+
+#### Q4: Structured Concurrency (Java 19-21 预览)？
+- **定义**: 结构化并发，将多个并发任务作为一个单元管理
+```java
+try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+    Future<String> user = scope.fork(() -> fetchUser());
+    Future<Integer> order = scope.fork(() -> fetchOrder());
+    
+    scope.join();           // 等待所有任务完成
+    scope.throwIfFailed();  // 任一失败则抛异常
+    
+    return new Response(user.resultNow(), order.resultNow());
+}
+```
+- **优势**: 更好的错误处理、资源管理、取消传播
+
+#### Q5: Sequenced Collections (Java 21)？
+- **定义**: 为有序集合提供统一的 API
+- **新接口**:
+    - `SequencedCollection`: 有序集合
+    - `SequencedSet`: 有序 Set
+    - `SequencedMap`: 有序 Map
+- **新方法**:
+    - `getFirst()`, `getLast()`: 获取首尾元素
+    - `addFirst()`, `addLast()`: 添加到首尾
+    - `removeFirst()`, `removeLast()`: 移除首尾
+    - `reversed()`: 返回反向视图
+
+### 1A.5 Java 22-23 最新特性
+
+#### Q1: Unnamed Patterns and Variables (Java 21-22)？
+- **定义**: 使用 `_` 表示不使用的变量
+```java
+// 忽略异常
+try {
+    // ...
+} catch (Exception _) {
+    // 不关心异常对象
+}
+
+// 忽略 switch 分支
+switch (obj) {
+    case Integer _ -> System.out.println("Integer");
+    case String _ -> System.out.println("String");
+}
+```
+
+#### Q2: String Templates (Java 21-23 预览)？
+- **定义**: 字符串模板，安全的字符串插值
+```java
+String name = "John";
+int age = 30;
+
+// 使用 STR 模板处理器
+String message = STR."Hello, \{name}! You are \{age} years old.";
+
+// 使用 FMT 格式化
+String formatted = FMT."Pi = %.2f\{Math.PI}";
+```
+- **优势**: 类型安全、防止注入攻击、支持自定义模板处理器
+
+#### Q3: Foreign Function & Memory API (Java 19-23)？
+- **定义**: 安全高效地调用本地代码和访问堆外内存
+- **替代**: JNI (Java Native Interface)
+- **优势**: 更安全、更高效、纯 Java API
+
+### 1A.6 面试高频问题
+
+#### Q1: 为什么推荐使用 Stream API？
+- **优势**:
+    - **声明式编程**: 关注"做什么"而非"怎么做"
+    - **链式调用**: 代码简洁易读
+    - **延迟执行**: 中间操作不会立即执行，优化性能
+    - **并行处理**: `parallelStream()` 轻松实现并行
+- **注意**: 简单场景用传统 for 循环更快，Stream 适合复杂数据处理
+
+#### Q2: Lambda 表达式的原理？
+- **实现**: 通过 `invokedynamic` 字节码指令 + 方法句柄 (MethodHandle)
+- **优势**: 比匿名内部类更高效（不生成额外的 .class 文件）
+- **闭包**: 可以捕获外部变量（必须是 final 或 effectively final）
+
+#### Q3: 虚拟线程 vs 传统线程？
+| 特性 | 传统线程 (Platform Thread) | 虚拟线程 (Virtual Thread) |
+| :--- | :--- | :--- |
+| **创建成本** | 高（MB 级栈空间） | 低（KB 级） |
+| **数量限制** | 受系统限制（千级） | 几乎无限（百万级） |
+| **调度** | 操作系统调度 | JVM 调度 |
+| **阻塞** | 占用系统线程 | 不占用（挂载/卸载） |
+| **适用场景** | CPU 密集型 | I/O 密集型 |
+
+#### Q4: Record 和普通类的区别？
+- **Record**: 不可变、自动生成方法、final 类、final 字段
+- **普通类**: 可变、需手动实现、可继承
+- **使用建议**: DTO、值对象用 Record；业务实体用普通类
+
+#### Q5: 生产环境应该选择哪个 Java 版本？
+- **推荐**: Java 17 或 Java 21 (LTS 版本)
+- **理由**:
+    - 长期支持（至少 3 年）
+    - 性能优化（G1/ZGC 改进）
+    - 新特性稳定（Records、Pattern Matching、Virtual Threads）
+- **升级建议**: 从 Java 8 升级到 17/21，性能提升 10-30%
+
 
 ### 1.5 内存泄露 (Memory Leak)
 - **问题**: Java 中会存在内存泄露吗？请举例说明。
@@ -95,6 +463,437 @@
 ### 3.3 循环依赖
 - **问题**: Spring 如何解决循环依赖？
 - **要点**: 三级缓存 (`singletonObjects`, `earlySingletonObjects`, `singletonFactories`)。构造器注入无法解决。
+
+## 3A. Spring WebFlux 响应式编程面试题
+
+### 3A.1 响应式编程基础
+
+#### Q1: 什么是响应式编程 (Reactive Programming)？
+- **定义**: 一种面向数据流和变化传播的异步编程范式
+- **核心特点**:
+    - **异步非阻塞**: 不阻塞线程，提高资源利用率
+    - **数据流 (Stream)**: 数据以流的形式传递
+    - **背压 (Backpressure)**: 消费者可以控制生产者的速度
+    - **声明式**: 关注"做什么"而非"怎么做"
+- **Reactive Streams 规范**: 定义了 4 个核心接口
+    - `Publisher<T>`: 发布者，产生数据
+    - `Subscriber<T>`: 订阅者，消费数据
+    - `Subscription`: 订阅关系，控制数据流
+    - `Processor<T,R>`: 处理器，既是发布者又是订阅者
+
+#### Q2: 为什么需要 WebFlux？它和 Spring MVC 的区别？
+- **WebFlux 优势**:
+    - **高并发**: 少量线程处理大量请求（适合 I/O 密集型）
+    - **非阻塞**: 不阻塞线程，资源利用率高
+    - **背压支持**: 防止生产者压垮消费者
+- **Spring MVC vs WebFlux 对比**:
+
+| 特性 | Spring MVC | Spring WebFlux |
+| :--- | :--- | :--- |
+| **编程模型** | 同步阻塞 | 异步非阻塞 |
+| **线程模型** | 每请求一线程 (Servlet 容器) | 少量线程 (Event Loop) |
+| **适用场景** | CPU 密集型、传统 CRUD | I/O 密集型、高并发、流式数据 |
+| **容器** | Tomcat, Jetty (Servlet) | Netty, Undertow (Reactive) |
+| **返回类型** | Object, List | Mono, Flux |
+| **数据库** | JDBC (阻塞) | R2DBC (响应式) |
+
+#### Q3: Mono 和 Flux 的区别？
+- **Mono<T>**: 0 或 1 个元素的异步序列
+    - 类似于 `CompletableFuture<T>` 或 `Optional<T>`
+    - 示例: `Mono<User> findById(String id)`
+- **Flux<T>**: 0 到 N 个元素的异步序列
+    - 类似于 `Stream<T>` 但是异步的
+    - 示例: `Flux<User> findAll()`
+- **选择建议**:
+    - 单个结果用 `Mono` (如根据 ID 查询)
+    - 多个结果用 `Flux` (如列表查询、流式数据)
+
+### 3A.2 核心操作符
+
+#### Q1: 常用的 Flux/Mono 操作符有哪些？
+- **创建操作符**:
+    - `Mono.just(value)`: 创建包含单个值的 Mono
+    - `Flux.just(1, 2, 3)`: 创建包含多个值的 Flux
+    - `Flux.fromIterable(list)`: 从集合创建
+    - `Mono.empty()` / `Flux.empty()`: 创建空序列
+    - `Mono.error(exception)`: 创建错误序列
+- **转换操作符**:
+    - `map(Function)`: 一对一映射
+    - `flatMap(Function)`: 一对多映射，返回 Mono/Flux
+    - `filter(Predicate)`: 过滤
+    - `take(n)`: 取前 n 个元素
+    - `skip(n)`: 跳过前 n 个元素
+- **组合操作符**:
+    - `zip()`: 组合多个流，等待所有流都发出元素
+    - `merge()`: 合并多个流，谁快谁先
+    - `concat()`: 串联多个流，按顺序
+- **错误处理**:
+    - `onErrorReturn(fallbackValue)`: 错误时返回默认值
+    - `onErrorResume(Function)`: 错误时切换到备用流
+    - `retry(n)`: 重试 n 次
+- **副作用操作符**:
+    - `doOnNext(Consumer)`: 每个元素发出时执行
+    - `doOnError(Consumer)`: 错误时执行
+    - `doOnComplete(Runnable)`: 完成时执行
+
+#### Q2: map() 和 flatMap() 的区别？
+```java
+// map: 一对一转换，返回普通对象
+Flux<String> names = Flux.just(1, 2, 3)
+    .map(i -> "User" + i);  // 返回 String
+
+// flatMap: 一对多转换，返回 Mono/Flux
+Flux<Order> orders = Flux.just(1, 2, 3)
+    .flatMap(userId -> orderService.findByUserId(userId));  // 返回 Flux<Order>
+```
+- **map**: 同步转换，返回值是普通对象
+- **flatMap**: 异步转换，返回值是 `Mono` 或 `Flux`，会自动"拍平"
+
+#### Q3: 什么是冷序列 (Cold) 和热序列 (Hot)？
+- **冷序列 (Cold Publisher)**:
+    - 每个订阅者都会收到完整的数据流
+    - 数据是惰性生成的，订阅时才开始发射
+    - 示例: HTTP 请求、数据库查询
+```java
+Mono<User> user = userRepository.findById(1);  // 冷序列
+user.subscribe(u -> System.out.println(u));    // 订阅1，执行查询
+user.subscribe(u -> System.out.println(u));    // 订阅2，再次执行查询
+```
+- **热序列 (Hot Publisher)**:
+    - 所有订阅者共享同一个数据流
+    - 数据持续发射，订阅者只能收到订阅后的数据
+    - 示例: 鼠标事件、股票行情
+```java
+Flux<String> hotFlux = Flux.just("A", "B", "C")
+    .share();  // 转为热序列
+```
+
+### 3A.3 背压 (Backpressure)
+
+#### Q1: 什么是背压？为什么需要背压？
+- **定义**: 消费者控制生产者发送数据的速度，防止被压垮
+- **问题场景**: 生产者每秒产生 1000 条数据，消费者每秒只能处理 100 条
+- **解决方案**:
+    - **Request(n)**: 消费者主动请求 n 个元素
+    - **Buffer**: 缓冲数据
+    - **Drop**: 丢弃数据
+    - **Latest**: 只保留最新数据
+
+#### Q2: 如何处理背压？
+```java
+// 策略 1: 限流 (Throttle)
+Flux.interval(Duration.ofMillis(1))
+    .onBackpressureDrop()  // 丢弃无法处理的数据
+    .subscribe();
+
+// 策略 2: 缓冲
+Flux.range(1, 1000)
+    .onBackpressureBuffer(100)  // 缓冲 100 个元素
+    .subscribe();
+
+// 策略 3: 最新值
+Flux.interval(Duration.ofMillis(1))
+    .onBackpressureLatest()  // 只保留最新值
+    .subscribe();
+
+// 策略 4: 错误
+Flux.range(1, 1000)
+    .onBackpressureError()  // 超出处理能力时抛异常
+    .subscribe();
+```
+
+### 3A.4 WebFlux 实战
+
+#### Q1: 如何创建一个 WebFlux Controller？
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    // 返回单个对象
+    @GetMapping("/{id}")
+    public Mono<User> getUser(@PathVariable String id) {
+        return userService.findById(id);
+    }
+    
+    // 返回列表
+    @GetMapping
+    public Flux<User> getAllUsers() {
+        return userService.findAll();
+    }
+    
+    // 创建用户
+    @PostMapping
+    public Mono<User> createUser(@RequestBody Mono<User> userMono) {
+        return userMono.flatMap(userService::save);
+    }
+    
+    // 流式返回 (Server-Sent Events)
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<User> streamUsers() {
+        return userService.findAll()
+            .delayElements(Duration.ofSeconds(1));  // 每秒发送一个
+    }
+}
+```
+
+#### Q2: WebClient 如何使用？与 RestTemplate 的区别？
+```java
+// 创建 WebClient
+WebClient webClient = WebClient.builder()
+    .baseUrl("https://api.example.com")
+    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+    .build();
+
+// GET 请求
+Mono<User> user = webClient.get()
+    .uri("/users/{id}", userId)
+    .retrieve()
+    .bodyToMono(User.class);
+
+// POST 请求
+Mono<User> created = webClient.post()
+    .uri("/users")
+    .bodyValue(newUser)
+    .retrieve()
+    .bodyToMono(User.class);
+
+// 并发请求
+Flux<User> users = Flux.just(1, 2, 3)
+    .flatMap(id -> webClient.get()
+        .uri("/users/{id}", id)
+        .retrieve()
+        .bodyToMono(User.class)
+    );
+```
+
+**WebClient vs RestTemplate**:
+| 特性 | RestTemplate | WebClient |
+| :--- | :--- | :--- |
+| **阻塞性** | 同步阻塞 | 异步非阻塞 |
+| **性能** | 低（每请求一线程） | 高（少量线程） |
+| **返回类型** | Object | Mono/Flux |
+| **状态** | 维护模式（不推荐） | 推荐使用 |
+
+#### Q3: 如何在 WebFlux 中处理异常？
+```java
+@RestController
+public class UserController {
+    
+    @GetMapping("/users/{id}")
+    public Mono<User> getUser(@PathVariable String id) {
+        return userService.findById(id)
+            // 方式 1: 返回默认值
+            .onErrorReturn(new User("Unknown"))
+            
+            // 方式 2: 切换到备用流
+            .onErrorResume(e -> {
+                log.error("Error fetching user", e);
+                return Mono.just(new User("Fallback"));
+            })
+            
+            // 方式 3: 重试
+            .retry(3)
+            
+            // 方式 4: 转换异常
+            .onErrorMap(e -> new CustomException("User not found", e));
+    }
+    
+    // 全局异常处理
+    @ExceptionHandler(CustomException.class)
+    public Mono<ResponseEntity<String>> handleCustomException(CustomException ex) {
+        return Mono.just(ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(ex.getMessage()));
+    }
+}
+```
+
+#### Q4: 如何使用 R2DBC 进行响应式数据库访问？
+```java
+// 1. 添加依赖 (pom.xml)
+// <dependency>
+//     <groupId>org.springframework.boot</groupId>
+//     <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+// </dependency>
+// <dependency>
+//     <groupId>io.r2dbc</groupId>
+//     <artifactId>r2dbc-mysql</artifactId>
+// </dependency>
+
+// 2. 配置 (application.yml)
+// spring:
+//   r2dbc:
+//     url: r2dbc:mysql://localhost:3306/mydb
+//     username: root
+//     password: password
+
+// 3. 定义 Repository
+public interface UserRepository extends ReactiveCrudRepository<User, String> {
+    Flux<User> findByName(String name);
+    Mono<User> findByEmail(String email);
+}
+
+// 4. 使用
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+    
+    public Mono<User> createUser(User user) {
+        return userRepository.save(user);
+    }
+    
+    public Flux<User> findAll() {
+        return userRepository.findAll();
+    }
+    
+    public Mono<User> findById(String id) {
+        return userRepository.findById(id)
+            .switchIfEmpty(Mono.error(new NotFoundException("User not found")));
+    }
+}
+```
+
+### 3A.5 高频面试问题
+
+#### Q1: WebFlux 一定比 Spring MVC 快吗？
+- **不一定！**
+- **WebFlux 优势场景**:
+    - **I/O 密集型**: 大量数据库查询、外部 API 调用
+    - **高并发**: 需要处理大量并发连接（如聊天室、实时推送）
+    - **流式数据**: 大文件上传/下载、视频流
+- **Spring MVC 优势场景**:
+    - **CPU 密集型**: 复杂计算、图像处理
+    - **简单 CRUD**: 业务逻辑简单，数据库查询少
+    - **团队熟悉度**: 团队对同步编程更熟悉
+- **性能对比**: 低并发时 MVC 可能更快（无响应式开销），高并发时 WebFlux 优势明显
+
+#### Q2: 如何调试 WebFlux 应用？
+- **挑战**: 异步调用链难以追踪
+- **解决方案**:
+    1. **日志**: 使用 `log()` 操作符
+    ```java
+    Flux.just(1, 2, 3)
+        .log()  // 打印所有事件
+        .map(i -> i * 2)
+        .subscribe();
+    ```
+    2. **Checkpoint**: 标记关键位置
+    ```java
+    Flux.just(1, 2, 3)
+        .checkpoint("After creation")
+        .map(i -> i / 0)  // 会抛异常
+        .checkpoint("After map")
+        .subscribe();
+    ```
+    3. **Hooks**: 全局调试钩子
+    ```java
+    Hooks.onOperatorDebug();  // 开启调试模式（性能有影响）
+    ```
+
+#### Q3: WebFlux 中如何实现事务？
+- **挑战**: R2DBC 不支持传统的 `@Transactional`
+- **解决方案**: 使用 `TransactionalOperator`
+```java
+@Service
+public class UserService {
+    @Autowired
+    private ReactiveTransactionManager transactionManager;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    public Mono<User> createUserWithTransaction(User user) {
+        TransactionalOperator operator = TransactionalOperator.create(transactionManager);
+        
+        return userRepository.save(user)
+            .flatMap(savedUser -> {
+                // 其他数据库操作
+                return otherRepository.save(relatedData);
+            })
+            .as(operator::transactional);  // 包装为事务
+    }
+}
+```
+
+#### Q4: 什么时候应该使用 block()？
+- **block()**: 将异步转为同步，阻塞等待结果
+```java
+User user = userService.findById("1").block();  // 阻塞等待
+```
+- **使用场景**:
+    - **测试代码**: 单元测试中验证结果
+    - **main 方法**: 应用启动时的初始化
+    - **非响应式集成**: 必须与阻塞代码集成时
+- **禁止场景**:
+    - **Controller 中**: 会阻塞 Event Loop 线程，失去响应式优势
+    - **高并发场景**: 会导致线程阻塞，性能下降
+- **替代方案**: 使用 `subscribe()` 或返回 `Mono/Flux`
+
+#### Q5: 如何测试 WebFlux 应用？
+```java
+@WebFluxTest(UserController.class)
+class UserControllerTest {
+    
+    @Autowired
+    private WebTestClient webTestClient;
+    
+    @MockBean
+    private UserService userService;
+    
+    @Test
+    void testGetUser() {
+        User mockUser = new User("1", "John");
+        when(userService.findById("1")).thenReturn(Mono.just(mockUser));
+        
+        webTestClient.get()
+            .uri("/api/users/1")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(User.class)
+            .value(user -> {
+                assertEquals("John", user.getName());
+            });
+    }
+    
+    @Test
+    void testGetAllUsers() {
+        Flux<User> users = Flux.just(
+            new User("1", "John"),
+            new User("2", "Jane")
+        );
+        when(userService.findAll()).thenReturn(users);
+        
+        webTestClient.get()
+            .uri("/api/users")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBodyList(User.class)
+            .hasSize(2);
+    }
+}
+```
+
+#### Q6: WebFlux 的线程模型是怎样的？
+- **Event Loop 模型**: 类似 Node.js
+- **默认线程数**: CPU 核心数（可配置）
+- **关键点**:
+    - 不要阻塞 Event Loop 线程（不要用 `block()`、`Thread.sleep()`）
+    - I/O 操作自动异步（如 WebClient、R2DBC）
+    - CPU 密集型操作需要切换线程池
+```java
+// 切换到其他线程池执行 CPU 密集型任务
+Mono.fromCallable(() -> {
+    // CPU 密集型计算
+    return heavyComputation();
+})
+.subscribeOn(Schedulers.boundedElastic())  // 切换线程池
+.subscribe();
+```
 
 ## 4. MySQL 数据库
 

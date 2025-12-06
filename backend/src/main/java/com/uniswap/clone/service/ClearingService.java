@@ -20,16 +20,19 @@ public class ClearingService {
 
     private final com.uniswap.clone.mapper.DepositMapper depositMapper;
     private final com.uniswap.clone.mapper.BalanceMapper balanceMapper;
+    private final com.uniswap.clone.mapper.TradeMapper tradeMapper;
     private final StringRedisTemplate redisTemplate;
     private final RedisLockService redisLockService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ClearingService(com.uniswap.clone.mapper.DepositMapper depositMapper, 
                            com.uniswap.clone.mapper.BalanceMapper balanceMapper,
+                           com.uniswap.clone.mapper.TradeMapper tradeMapper,
                            StringRedisTemplate redisTemplate,
                            RedisLockService redisLockService) {
         this.depositMapper = depositMapper;
         this.balanceMapper = balanceMapper;
+        this.tradeMapper = tradeMapper;
         this.redisTemplate = redisTemplate;
         this.redisLockService = redisLockService;
     }
@@ -117,28 +120,53 @@ public class ClearingService {
 
     @Transactional
     public boolean freezeFunds(String userId, String currency, BigDecimal amount) {
-        com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
+        String lockKey = "balance:lock:" + userId + ":" + currency;
+        // Try to acquire distributed lock (wait up to 5 seconds)
+        // Note: For critical financial operations, we must ensure lock acquisition or fail
+        RedisLockService.LockResult lockResult = redisLockService.tryLock(lockKey, 5, TimeUnit.SECONDS);
         
-        if (balance.getAvailable().compareTo(amount) < 0) {
-            return false; // Insufficient funds
+        if (!lockResult.isAcquired()) {
+            System.err.println("Failed to acquire lock for freezeFunds. userId=" + userId);
+            throw new RuntimeException("System busy, please try again");
         }
-
-        balance.setAvailable(balance.getAvailable().subtract(amount));
-        balance.setFrozen(balance.getFrozen().add(amount));
-        balanceMapper.updateById(balance);
         
-        invalidateCache(userId);
-        return true;
+        try {
+            com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
+            
+            if (balance.getAvailable().compareTo(amount) < 0) {
+                return false; // Insufficient funds
+            }
+
+            balance.setAvailable(balance.getAvailable().subtract(amount));
+            balance.setFrozen(balance.getFrozen().add(amount));
+            balanceMapper.updateById(balance);
+            
+            invalidateCache(userId);
+            return true;
+        } finally {
+            redisLockService.unlock(lockKey, lockResult.getLockValue());
+        }
     }
 
     @Transactional
     public void unfreezeFunds(String userId, String currency, BigDecimal amount) {
-        com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
-        balance.setFrozen(balance.getFrozen().subtract(amount));
-        balance.setAvailable(balance.getAvailable().add(amount));
-        balanceMapper.updateById(balance);
+        String lockKey = "balance:lock:" + userId + ":" + currency;
+        RedisLockService.LockResult lockResult = redisLockService.tryLock(lockKey, 5, TimeUnit.SECONDS);
         
-        invalidateCache(userId);
+        if (!lockResult.isAcquired()) {
+            throw new RuntimeException("System busy, please try again");
+        }
+        
+        try {
+            com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
+            balance.setFrozen(balance.getFrozen().subtract(amount));
+            balance.setAvailable(balance.getAvailable().add(amount));
+            balanceMapper.updateById(balance);
+            
+            invalidateCache(userId);
+        } finally {
+            redisLockService.unlock(lockKey, lockResult.getLockValue());
+        }
     }
 
     @Transactional
@@ -167,6 +195,19 @@ public class ClearingService {
         com.uniswap.clone.entity.Balance sellerQuote = getOrCreateBalance(trade.getSellerUserId(), quoteCurrency);
         sellerQuote.setAvailable(sellerQuote.getAvailable().add(quoteAmount));
         balanceMapper.updateById(sellerQuote);
+        
+        // 3. Persist Trade Record
+        com.uniswap.clone.entity.Trade tradeEntity = new com.uniswap.clone.entity.Trade();
+        tradeEntity.setTradeId(trade.getTradeId());
+        tradeEntity.setBuyerUserId(trade.getBuyerUserId());
+        tradeEntity.setSellerUserId(trade.getSellerUserId());
+        tradeEntity.setSymbol(trade.getSymbol());
+        tradeEntity.setBuyOrderId(trade.getBuyOrderId());
+        tradeEntity.setSellOrderId(trade.getSellOrderId());
+        tradeEntity.setPrice(trade.getPrice());
+        tradeEntity.setQuantity(trade.getQuantity());
+        tradeEntity.setTimestamp(trade.getTimestamp());
+        tradeMapper.insert(tradeEntity);
         
         invalidateCache(trade.getBuyerUserId());
         invalidateCache(trade.getSellerUserId());
