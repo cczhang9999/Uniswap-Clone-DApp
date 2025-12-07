@@ -53,16 +53,12 @@ public class MatchingEngine {
             throw new RuntimeException("Insufficient funds for user: " + order.getUserId());
         }
 
-        System.out.println("Processing order: " + order.getSymbol() + " " + order.getSide() + " " + order.getPrice() + " " + order.getQuantity());
-        
         // 2. Match Order
         OrderBook orderBook = getOrderBook(order.getSymbol());
         List<Trade> trades;
         synchronized (orderBook) { 
             trades = orderBook.processOrder(order);
         }
-        
-        System.out.println("Matching completed. Generated trades: " + trades.size());
 
         // 3. Post-trade Settlement
         for (Trade trade : trades) {

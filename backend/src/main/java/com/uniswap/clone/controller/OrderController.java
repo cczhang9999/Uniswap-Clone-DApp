@@ -19,23 +19,42 @@ public class OrderController {
 
     private final MatchingEngine matchingEngine;
     private final ClearingService clearingService;
+    private final com.uniswap.clone.mapper.OrderMapper orderMapper;
 
-    public OrderController(MatchingEngine matchingEngine, ClearingService clearingService) {
+    public OrderController(MatchingEngine matchingEngine, ClearingService clearingService, com.uniswap.clone.mapper.OrderMapper orderMapper) {
         this.matchingEngine = matchingEngine;
         this.clearingService = clearingService;
+        this.orderMapper = orderMapper;
     }
 
     @PostMapping("/order")
     public com.uniswap.clone.common.Result<List<Trade>> placeOrder(@RequestBody OrderRequest request) {
+        String orderId = UUID.randomUUID().toString();
+        
+        // 1. Persist Order to DB
+        com.uniswap.clone.entity.Order orderEntity = new com.uniswap.clone.entity.Order();
+        orderEntity.setOrderId(orderId);
+        orderEntity.setUserId(request.getUserId());
+        orderEntity.setSymbol(request.getSymbol());
+        orderEntity.setSide(request.getSide().toString());
+        orderEntity.setType(request.getType().toString());
+        orderEntity.setPrice(request.getPrice());
+        orderEntity.setQuantity(request.getQuantity());
+        orderEntity.setStatus("PENDING");
+        orderEntity.setFilledQuantity(BigDecimal.ZERO);
+        orderEntity.setTimestamp(System.currentTimeMillis());
+        orderMapper.insert(orderEntity);
+
+        // 2. Process Order in Matching Engine
         Order order = new Order(
                 request.getUserId(),
-                UUID.randomUUID().toString(),
+                orderId,
                 request.getSymbol(),
                 request.getSide(),
                 request.getType(),
                 request.getPrice(),
                 request.getQuantity(),
-                System.currentTimeMillis()
+                orderEntity.getTimestamp()
         );
         return com.uniswap.clone.common.Result.success(matchingEngine.processOrder(order));
     }
@@ -55,6 +74,13 @@ public class OrderController {
     public com.uniswap.clone.common.Result<String> deposit(@RequestBody DepositRequest request) {
             clearingService.deposit(request.getUserId(), request.getCurrency(), request.getAmount());
             return com.uniswap.clone.common.Result.success("Deposit successful");
+    }
+
+    @GetMapping("/orders/{userId}")
+    public com.uniswap.clone.common.Result<List<com.uniswap.clone.entity.Order>> getOrders(@PathVariable String userId) {
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.uniswap.clone.entity.Order> query = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        query.eq("user_id", userId).orderByDesc("timestamp");
+        return com.uniswap.clone.common.Result.success(orderMapper.selectList(query));
     }
     
     static class DepositRequest {

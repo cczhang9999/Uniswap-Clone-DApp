@@ -74,6 +74,29 @@ const OrderBook = ({ userId }) => {
     }
   };
 
+  const [myOrders, setMyOrders] = useState([]);
+
+  // Fetch My Orders
+  useEffect(() => {
+    if (!userId) return;
+    
+    const fetchMyOrders = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/v1/orders/${userId}`);
+        const result = await response.json();
+        if (result.code === 200) {
+          setMyOrders(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch my orders:", error);
+      }
+    };
+
+    fetchMyOrders();
+    const interval = setInterval(fetchMyOrders, 2000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
   return (
     <div className={Style.OrderBook}>
       <div className={Style.OrderBook_box}>
@@ -146,6 +169,43 @@ const OrderBook = ({ userId }) => {
             ))}
           </div>
         </div>
+      </div>
+      
+      {/* My Orders Section */}
+      <div className={Style.OrderBook_box} style={{ marginTop: "2rem", display: "block" }}>
+        <div className={Style.OrderBook_box_heading}>
+          <p>My Orders</p>
+        </div>
+        <table style={{ width: "100%", color: "#fff", textAlign: "left", borderCollapse: "collapse" }}>
+            <thead>
+                <tr style={{ borderBottom: "1px solid #333" }}>
+                    <th style={{ padding: "10px" }}>Time</th>
+                    <th style={{ padding: "10px" }}>Symbol</th>
+                    <th style={{ padding: "10px" }}>Side</th>
+                    <th style={{ padding: "10px" }}>Type</th>
+                    <th style={{ padding: "10px" }}>Price</th>
+                    <th style={{ padding: "10px" }}>Qty</th>
+                    <th style={{ padding: "10px" }}>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {myOrders.length === 0 ? (
+                    <tr><td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#888" }}>No orders found</td></tr>
+                ) : (
+                    myOrders.map((order) => (
+                        <tr key={order.orderId} style={{ borderBottom: "1px solid #222" }}>
+                            <td style={{ padding: "10px" }}>{new Date(order.timestamp).toLocaleTimeString()}</td>
+                            <td style={{ padding: "10px" }}>{order.symbol}</td>
+                            <td style={{ padding: "10px", color: order.side === 'BUY' ? '#00ff00' : '#ff0000' }}>{order.side}</td>
+                            <td style={{ padding: "10px" }}>{order.type}</td>
+                            <td style={{ padding: "10px" }}>{order.price}</td>
+                            <td style={{ padding: "10px" }}>{order.quantity}</td>
+                            <td style={{ padding: "10px" }}>{order.status}</td>
+                        </tr>
+                    ))
+                )}
+            </tbody>
+        </table>
       </div>
     </div>
   );
