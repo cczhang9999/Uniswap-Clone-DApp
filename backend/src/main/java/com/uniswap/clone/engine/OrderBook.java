@@ -73,7 +73,7 @@ public class OrderBook {
         // 当对手方队列不为空，且新订单还有剩余数量时，循环尝试撮合
         while (!oppositeBook.isEmpty() && incomingOrder.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
             Order bestMatch = oppositeBook.peek(); // 获取对手方最优价格订单
-            
+
             // 检查价格条件是否满足
             if (incomingOrder.getSide() == Order.Side.BUY) {
                 // 买单：如果买入价 < 卖一价，无法成交，退出循环

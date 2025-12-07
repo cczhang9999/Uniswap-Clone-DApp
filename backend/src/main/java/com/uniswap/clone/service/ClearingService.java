@@ -171,6 +171,8 @@ public class ClearingService {
 
     @Transactional
     public void settleTrade(Trade trade) {
+        System.out.println("Processing trade settlement: " + trade);
+
         String[] parts = trade.getSymbol().split("-");
         String baseCurrency = parts[0]; // BTC
         String quoteCurrency = parts[1]; // USDT
@@ -207,7 +209,9 @@ public class ClearingService {
         tradeEntity.setPrice(trade.getPrice());
         tradeEntity.setQuantity(trade.getQuantity());
         tradeEntity.setTimestamp(trade.getTimestamp());
+        System.out.println("3333333333333");
         tradeMapper.insert(tradeEntity);
+        System.out.println("Trade persisted to database: " + tradeEntity.getTradeId());
         
         invalidateCache(trade.getBuyerUserId());
         invalidateCache(trade.getSellerUserId());
