@@ -78,6 +78,7 @@ public class OrderBook {
             if (incomingOrder.getSide() == Order.Side.BUY) {
                 // 买单：如果买入价 < 卖一价，无法成交，退出循环
                 if (incomingOrder.getType() == Order.Type.LIMIT && incomingOrder.getPrice().compareTo(bestMatch.getPrice()) < 0) {
+                    System.out.println("Price not match for BUY: " + incomingOrder.getPrice() + " < " + bestMatch.getPrice());
                     break; 
                 }
             } else {
