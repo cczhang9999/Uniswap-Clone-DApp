@@ -62,6 +62,7 @@ public class OrderController {
     @GetMapping("/order/book/{symbol}")
     public com.uniswap.clone.common.Result<OrderBookDTO> getOrderBook(@PathVariable String symbol) {
         OrderBook orderBook = matchingEngine.getOrderBook(symbol);
+        System.out.println("Order Book: " + orderBook);
         return com.uniswap.clone.common.Result.success(new OrderBookDTO(orderBook.getBids(), orderBook.getAsks()));
     }
     
