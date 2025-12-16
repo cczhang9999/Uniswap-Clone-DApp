@@ -4,7 +4,7 @@ This is the Java Spring Boot backend for the Uniswap Clone application.
 
 ## Prerequisites
 
-- Java 21
+- Java 17 or higher
 - Maven (Wrapper included)
 
 ## How to Run
