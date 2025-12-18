@@ -70,4 +70,11 @@ public class MatchingEngine {
         
         return trades;
     }
+
+    public boolean cancelOrder(Order order) {
+        OrderBook orderBook = getOrderBook(order.getSymbol());
+        synchronized (orderBook) {
+            return orderBook.cancelOrder(order.getOrderId(), order.getSide());
+        }
+    }
 }

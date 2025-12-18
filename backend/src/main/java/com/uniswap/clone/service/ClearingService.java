@@ -98,8 +98,13 @@ public class ClearingService {
         try {
             // Execute deposit logic within lock (or without if Redis unavailable)
             com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
-            balance.setAvailable(balance.getAvailable().add(amount));
-            balanceMapper.updateById(balance);
+            BigDecimal newAvailable = balance.getAvailable().add(amount);
+            
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+            updateWrapper.eq("user_id", userId)
+                        .eq("currency", currency)
+                        .set("available", newAvailable);
+            balanceMapper.update(null, updateWrapper);
 
             // Persist deposit record
             com.uniswap.clone.entity.Deposit deposit = new com.uniswap.clone.entity.Deposit();
@@ -137,9 +142,15 @@ public class ClearingService {
                 return false; // Insufficient funds
             }
 
-            balance.setAvailable(balance.getAvailable().subtract(amount));
-            balance.setFrozen(balance.getFrozen().add(amount));
-            balanceMapper.updateById(balance);
+            BigDecimal newAvailable = balance.getAvailable().subtract(amount);
+            BigDecimal newFrozen = balance.getFrozen().add(amount);
+            
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+            updateWrapper.eq("user_id", userId)
+                        .eq("currency", currency)
+                        .set("available", newAvailable)
+                        .set("frozen", newFrozen);
+            balanceMapper.update(null, updateWrapper);
             
             invalidateCache(userId);
             return true;
@@ -159,9 +170,15 @@ public class ClearingService {
         
         try {
             com.uniswap.clone.entity.Balance balance = getOrCreateBalance(userId, currency);
-            balance.setFrozen(balance.getFrozen().subtract(amount));
-            balance.setAvailable(balance.getAvailable().add(amount));
-            balanceMapper.updateById(balance);
+            BigDecimal newFrozen = balance.getFrozen().subtract(amount);
+            BigDecimal newAvailable = balance.getAvailable().add(amount);
+            
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+            updateWrapper.eq("user_id", userId)
+                        .eq("currency", currency)
+                        .set("available", newAvailable)
+                        .set("frozen", newFrozen);
+            balanceMapper.update(null, updateWrapper);
             
             invalidateCache(userId);
         } finally {
@@ -182,21 +199,41 @@ public class ClearingService {
 
         // 1. Buyer: Pays Quote (Frozen), Receives Base (Available)
         com.uniswap.clone.entity.Balance buyerQuote = getOrCreateBalance(trade.getBuyerUserId(), quoteCurrency);
-        buyerQuote.setFrozen(buyerQuote.getFrozen().subtract(quoteAmount));
-        balanceMapper.updateById(buyerQuote);
+        BigDecimal buyerQuoteNewFrozen = buyerQuote.getFrozen().subtract(quoteAmount);
+        
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> buyerQuoteWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        buyerQuoteWrapper.eq("user_id", trade.getBuyerUserId())
+                        .eq("currency", quoteCurrency)
+                        .set("frozen", buyerQuoteNewFrozen);
+        balanceMapper.update(null, buyerQuoteWrapper);
 
         com.uniswap.clone.entity.Balance buyerBase = getOrCreateBalance(trade.getBuyerUserId(), baseCurrency);
-        buyerBase.setAvailable(buyerBase.getAvailable().add(baseAmount));
-        balanceMapper.updateById(buyerBase);
+        BigDecimal buyerBaseNewAvailable = buyerBase.getAvailable().add(baseAmount);
+        
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> buyerBaseWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        buyerBaseWrapper.eq("user_id", trade.getBuyerUserId())
+                       .eq("currency", baseCurrency)
+                       .set("available", buyerBaseNewAvailable);
+        balanceMapper.update(null, buyerBaseWrapper);
 
         // 2. Seller: Pays Base (Frozen), Receives Quote (Available)
         com.uniswap.clone.entity.Balance sellerBase = getOrCreateBalance(trade.getSellerUserId(), baseCurrency);
-        sellerBase.setFrozen(sellerBase.getFrozen().subtract(baseAmount));
-        balanceMapper.updateById(sellerBase);
+        BigDecimal sellerBaseNewFrozen = sellerBase.getFrozen().subtract(baseAmount);
+        
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> sellerBaseWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        sellerBaseWrapper.eq("user_id", trade.getSellerUserId())
+                        .eq("currency", baseCurrency)
+                        .set("frozen", sellerBaseNewFrozen);
+        balanceMapper.update(null, sellerBaseWrapper);
 
         com.uniswap.clone.entity.Balance sellerQuote = getOrCreateBalance(trade.getSellerUserId(), quoteCurrency);
-        sellerQuote.setAvailable(sellerQuote.getAvailable().add(quoteAmount));
-        balanceMapper.updateById(sellerQuote);
+        BigDecimal sellerQuoteNewAvailable = sellerQuote.getAvailable().add(quoteAmount);
+        
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.uniswap.clone.entity.Balance> sellerQuoteWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        sellerQuoteWrapper.eq("user_id", trade.getSellerUserId())
+                         .eq("currency", quoteCurrency)
+                         .set("available", sellerQuoteNewAvailable);
+        balanceMapper.update(null, sellerQuoteWrapper);
         
         // 3. Persist Trade Record
         com.uniswap.clone.entity.Trade tradeEntity = new com.uniswap.clone.entity.Trade();

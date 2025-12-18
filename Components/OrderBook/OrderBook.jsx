@@ -33,8 +33,8 @@ const OrderBook = ({ userId }) => {
     };
 
     fetchOrderBook(); // 组件加载时立即获取一次
-    const interval = setInterval(fetchOrderBook, 2000); // 设置定时器，每 1 秒轮询一次最新数据
-    return () => clearInterval(interval); // 组件卸载时清除定时器，防止内存泄漏
+    //const interval = setInterval(fetchOrderBook, 2000); // 设置定时器，每 1 秒轮询一次最新数据
+    //return () => clearInterval(interval); // 组件卸载时清除定时器，防止内存泄漏
   }, [symbol]); // 依赖项为 symbol，当 symbol 变化时重新执行
 
   // Place Order
@@ -93,8 +93,8 @@ const OrderBook = ({ userId }) => {
     };
 
     fetchMyOrders();
-    const interval = setInterval(fetchMyOrders, 2000);
-    return () => clearInterval(interval);
+    //const interval = setInterval(fetchMyOrders, 2000);
+    //return () => clearInterval(interval);
   }, [userId]);
 
   return (

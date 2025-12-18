@@ -41,3 +41,7 @@ mybatis-plus:
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+# Seata 分布式事务配置（已禁用）
+seata:
+  enabled: false

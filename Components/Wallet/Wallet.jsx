@@ -25,8 +25,8 @@ const Wallet = ({ userId, setUserId }) => {
 
   useEffect(() => {
     fetchBalance();
-    const interval = setInterval(fetchBalance, 2000);
-    return () => clearInterval(interval);
+    //const interval = setInterval(fetchBalance, 2000);
+    //return () => clearInterval(interval);
   }, [userId]);
 
   // Deposit Funds

@@ -8,10 +8,9 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@TableName("orders")
+@TableName("t_order")
 public class Order {
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(value = "order_id", type = IdType.INPUT)
     private String orderId;
     private String userId;
     private String symbol;

@@ -158,4 +158,30 @@ class MatchingEngineTest {
         });
         assertTrue(exception.getMessage().contains("Order quantity too large"));
     }
+
+    @Test
+    void testCancelOrder() {
+        String symbol = "BTC-USDT";
+        String seller = "s1";
+        
+        Order sellOrder = new Order(seller, UUID.randomUUID().toString(), symbol, Order.Side.SELL, Order.Type.LIMIT, new BigDecimal("60000"), new BigDecimal("1"), System.currentTimeMillis());
+        
+        // 1. Place Order
+        matchingEngine.processOrder(sellOrder);
+        
+        // Check Book
+        OrderBook book = matchingEngine.getOrderBook(symbol);
+        assertEquals(1, book.getAsks().size());
+        
+        // 2. Cancel Order
+        boolean removed = matchingEngine.cancelOrder(sellOrder);
+        assertTrue(removed);
+        
+        // Check Book Emptiness
+        assertEquals(0, book.getAsks().size());
+        
+        // 3. Cancel non-existent order
+        boolean removedAgain = matchingEngine.cancelOrder(sellOrder);
+        assertFalse(removedAgain);
+    }
 }

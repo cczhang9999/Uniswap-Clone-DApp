@@ -6,6 +6,7 @@ import com.uniswap.clone.model.Order;
 import com.uniswap.clone.model.Trade;
 import com.uniswap.clone.model.Wallet;
 import com.uniswap.clone.service.ClearingService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -15,48 +16,29 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1")
 @CrossOrigin(origins = "http://localhost:3000")
+@RequiredArgsConstructor
 public class OrderController {
 
     private final MatchingEngine matchingEngine;
     private final ClearingService clearingService;
     private final com.uniswap.clone.mapper.OrderMapper orderMapper;
-
-    public OrderController(MatchingEngine matchingEngine, ClearingService clearingService, com.uniswap.clone.mapper.OrderMapper orderMapper) {
-        this.matchingEngine = matchingEngine;
-        this.clearingService = clearingService;
-        this.orderMapper = orderMapper;
-    }
+    private final com.uniswap.clone.service.OrderService orderService;
 
     @PostMapping("/order")
     public com.uniswap.clone.common.Result<List<Trade>> placeOrder(@RequestBody OrderRequest request) {
-        String orderId = UUID.randomUUID().toString();
-        
-        // 1. Persist Order to DB
-        com.uniswap.clone.entity.Order orderEntity = new com.uniswap.clone.entity.Order();
-        orderEntity.setOrderId(orderId);
-        orderEntity.setUserId(request.getUserId());
-        orderEntity.setSymbol(request.getSymbol());
-        orderEntity.setSide(request.getSide().toString());
-        orderEntity.setType(request.getType().toString());
-        orderEntity.setPrice(request.getPrice());
-        orderEntity.setQuantity(request.getQuantity());
-        orderEntity.setStatus("PENDING");
-        orderEntity.setFilledQuantity(BigDecimal.ZERO);
-        orderEntity.setTimestamp(System.currentTimeMillis());
-        orderMapper.insert(orderEntity);
-
-        // 2. Process Order in Matching Engine
-        Order order = new Order(
-                request.getUserId(),
-                orderId,
-                request.getSymbol(),
-                request.getSide(),
-                request.getType(),
-                request.getPrice(),
-                request.getQuantity(),
-                orderEntity.getTimestamp()
+        return orderService.createOrder(
+            request.getUserId(),
+            request.getSymbol(),
+            request.getSide().toString(),
+            request.getType().toString(),
+            request.getPrice(),
+            request.getQuantity()
         );
-        return com.uniswap.clone.common.Result.success(matchingEngine.processOrder(order));
+    }
+
+    @DeleteMapping("/order/{orderId}")
+    public com.uniswap.clone.common.Result<String> cancelOrder(@PathVariable String orderId, @RequestParam String userId) {
+        return orderService.cancelOrder(orderId, userId);
     }
 
     @GetMapping("/order/book/{symbol}")

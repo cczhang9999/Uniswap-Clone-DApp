@@ -142,4 +142,15 @@ public class OrderBook {
         list.sort(asks.comparator()); // 重新排序以确保列表顺序正确
         return list;
     }
+
+    /**
+     * 取消订单
+     * @param orderId 订单ID
+     * @param side 订单方向
+     * @return 是否成功移除
+     */
+    public boolean cancelOrder(String orderId, Order.Side side) {
+        PriorityQueue<Order> queue = (side == Order.Side.BUY) ? bids : asks;
+        return queue.removeIf(o -> o.getOrderId().equals(orderId));
+    }
 }

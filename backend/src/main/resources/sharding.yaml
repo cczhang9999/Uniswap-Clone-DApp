@@ -2,45 +2,88 @@ dataSources:
   ds0:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
-    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp_0?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
     username: hobart
     password: 123456
-    # HikariCP connection pool properties
-    data-source-properties:
-      cachePrepStmts: true
-      prepStmtCacheSize: 250
-      prepStmtCacheSqlLimit: 2048
     connectionTimeout: 30000
-    validationTimeout: 5000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 10
-    minimumIdle: 2
-    keepaliveTime: 300000
+    maximumPoolSize: 20
+    minimumIdle: 5
+  ds1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp_1?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+    username: hobart
+    password: 123456
+    connectionTimeout: 30000
+    idleTimeout: 600000
+    maxLifetime: 1800000
+    maximumPoolSize: 20
+    minimumIdle: 5
+  ds2:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp_2?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+    username: hobart
+    password: 123456
+    connectionTimeout: 30000
+    idleTimeout: 600000
+    maxLifetime: 1800000
+    maximumPoolSize: 20
+    minimumIdle: 5
+  ds3:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp_3?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+    username: hobart
+    password: 123456
+    connectionTimeout: 30000
+    idleTimeout: 600000
+    maxLifetime: 1800000
+    maximumPoolSize: 20
+    minimumIdle: 5
 
 rules:
 - !SHARDING
   tables:
-    users:
-      actualDataNodes: ds0.users_$->{0..2}
+    t_order:
+      actualDataNodes: ds$->{0..3}.t_order_$->{0..15}
+      databaseStrategy:
+        standard:
+          shardingColumn: user_id
+          shardingAlgorithmName: database-inline
       tableStrategy:
         standard:
-          shardingColumn: id
-          shardingAlgorithmName: users-inline
-    # Non-sharded tables - single table in ds0
+          shardingColumn: user_id
+          shardingAlgorithmName: t-order-table-inline
+      keyGenerateStrategy:
+        column: order_id
+        keyGeneratorName: snowflake
     balances:
-      actualDataNodes: ds0.balances
+      actualDataNodes: ds$->{0..3}.balances
+      databaseStrategy:
+        standard:
+          shardingColumn: user_id
+          shardingAlgorithmName: database-inline
     deposits:
-      actualDataNodes: ds0.deposits
-    trade:
-      actualDataNodes: ds0.trade
-    orders:
-      actualDataNodes: ds0.orders
+      actualDataNodes: ds$->{0..3}.deposits
+      databaseStrategy:
+        standard:
+          shardingColumn: user_id
+          shardingAlgorithmName: database-inline
   shardingAlgorithms:
-    users-inline:
+    database-inline:
       type: INLINE
       props:
-        algorithm-expression: users_$->{id % 3}
+        algorithm-expression: ds$->{Math.abs(user_id.hashCode()) % 4}
+    t-order-table-inline:
+      type: INLINE
+      props:
+        algorithm-expression: t_order_$->{Math.abs(user_id.hashCode()) % 16}
+  keyGenerators:
+    snowflake:
+      type: SNOWFLAKE
 
 props:
   sql-show: true
