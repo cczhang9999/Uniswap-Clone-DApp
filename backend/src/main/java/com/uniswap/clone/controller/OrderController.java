@@ -23,6 +23,14 @@ public class OrderController {
     private final ClearingService clearingService;
     private final com.uniswap.clone.mapper.OrderMapper orderMapper;
     private final com.uniswap.clone.service.OrderService orderService;
+    private final com.uniswap.clone.mapper.OrderSummaryMapper orderSummaryMapper;
+
+    @GetMapping("/orders/summary")
+    public com.uniswap.clone.common.Result<List<com.uniswap.clone.entity.OrderSummary>> getAllOrdersSummary() {
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.uniswap.clone.entity.OrderSummary> query = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        query.orderByDesc("timestamp").last("LIMIT 50");
+        return com.uniswap.clone.common.Result.success(orderSummaryMapper.selectList(query));
+    }
 
     @PostMapping("/order")
     public com.uniswap.clone.common.Result<List<Trade>> placeOrder(@RequestBody OrderRequest request) {

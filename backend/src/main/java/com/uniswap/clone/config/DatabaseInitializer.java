@@ -69,9 +69,26 @@ public class DatabaseInitializer implements CommandLineRunner {
                         try (java.sql.Connection conn = entry.getValue().getConnection();
                              java.sql.Statement stmt = conn.createStatement()) {
                             stmt.execute(createUndoLogSql);
+                            
+                            // Also create orders_summary on all shards (to ensure ds4 has it)
+                            stmt.execute("CREATE TABLE IF NOT EXISTS orders_summary (" +
+                                "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                                "order_id VARCHAR(255) NOT NULL, " +
+                                "user_id VARCHAR(255), " +
+                                "symbol VARCHAR(20), " +
+                                "side VARCHAR(10), " +
+                                "type VARCHAR(10), " +
+                                "price DECIMAL(20, 8), " +
+                                "quantity DECIMAL(20, 8), " +
+                                "status VARCHAR(20), " +
+                                "filled_quantity DECIMAL(20, 8) DEFAULT 0, " +
+                                "timestamp BIGINT, " +
+                                "INDEX idx_user_id (user_id), " +
+                                "INDEX idx_order_id (order_id) " +
+                                ")");
                         }
                     }
-                    System.out.println("Table 'undo_log' check/creation completed on all shards.");
+                    System.out.println("Tables 'undo_log' and 'orders_summary' checked/created on all shards.");
                  } catch (Exception e) {
                      System.err.println("Failed to initialize undo_log on shards: " + e.getMessage());
                      // Fallback to simpler execution if reflection fails
@@ -85,6 +102,27 @@ public class DatabaseInitializer implements CommandLineRunner {
                         "log_modified DATETIME" +
                         ")");
                  }
+            }
+
+            try {
+                jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS orders_summary (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "order_id VARCHAR(255) NOT NULL, " +
+                    "user_id VARCHAR(255), " +
+                    "symbol VARCHAR(20), " +
+                    "side VARCHAR(10), " +
+                    "type VARCHAR(10), " +
+                    "price DECIMAL(20, 8), " +
+                    "quantity DECIMAL(20, 8), " +
+                    "status VARCHAR(20), " +
+                    "filled_quantity DECIMAL(20, 8) DEFAULT 0, " +
+                    "timestamp BIGINT, " +
+                    "INDEX idx_user_id (user_id), " +
+                    "INDEX idx_order_id (order_id) " +
+                    ")");
+                System.out.println("Table 'orders_summary' check/creation completed using default datasource.");
+            } catch (Exception e) {
+                System.err.println("Note: 'orders_summary' creation check failed (likely due to sharding router): " + e.getMessage());
             }
 
             System.out.println("Database initialization finished.");

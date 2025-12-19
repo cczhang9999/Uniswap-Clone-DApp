@@ -10,6 +10,7 @@ import com.uniswap.clone.entity.User;
 
 @SpringBootApplication
 @MapperScan("com.uniswap.clone.mapper")
+@org.springframework.scheduling.annotation.EnableAsync
 public class ExchangeApplication {
 
     public static void main(String[] args) {

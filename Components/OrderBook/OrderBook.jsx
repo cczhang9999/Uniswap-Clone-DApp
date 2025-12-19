@@ -76,6 +76,7 @@ const OrderBook = ({ userId, refreshCount }) => {
 
   const [myOrders, setMyOrders] = useState([]);
   const [trades, setTrades] = useState([]);
+  const [globalOrders, setGlobalOrders] = useState([]);
 
   // Fetch My Orders
   useEffect(() => {
@@ -105,8 +106,21 @@ const OrderBook = ({ userId, refreshCount }) => {
       }
     };
 
+    const fetchGlobalOrders = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/v1/orders/summary`);
+        const result = await response.json();
+        if (result.code === 200) {
+          setGlobalOrders(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch global orders:", error);
+      }
+    };
+
     fetchMyOrders();
     fetchTrades();
+    fetchGlobalOrders();
     //const interval = setInterval(fetchMyOrders, 2000);
     //return () => clearInterval(interval);
   }, [userId, refreshCount]);
@@ -257,6 +271,41 @@ const OrderBook = ({ userId, refreshCount }) => {
                             </tr>
                         );
                     })
+                )}
+            </tbody>
+        </table>
+      </div>
+
+      {/* Global Market Orders Section (All Shards) */}
+      <div className={Style.OrderBook_box} style={{ marginTop: "2rem", display: "block", borderTop: "2px solid #555", paddingTop: "1rem" }}>
+        <div className={Style.OrderBook_box_heading}>
+          <p>Global Market Orders (Summary DB - ds0)</p>
+        </div>
+        <table style={{ width: "100%", color: "#fff", textAlign: "left", borderCollapse: "collapse" }}>
+            <thead>
+                <tr style={{ borderBottom: "1px solid #333" }}>
+                    <th style={{ padding: "10px" }}>Time</th>
+                    <th style={{ padding: "10px" }}>User</th>
+                    <th style={{ padding: "10px" }}>Symbol</th>
+                    <th style={{ padding: "10px" }}>Side</th>
+                    <th style={{ padding: "10px" }}>Price</th>
+                    <th style={{ padding: "10px" }}>Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {globalOrders.length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#888" }}>No global orders found</td></tr>
+                ) : (
+                    globalOrders.map((order) => (
+                        <tr key={order.orderId} style={{ borderBottom: "1px solid #222" }}>
+                             <td style={{ padding: "10px" }}>{new Date(order.timestamp).toLocaleTimeString()}</td>
+                             <td style={{ padding: "10px" }}>{order.userId}</td>
+                             <td style={{ padding: "10px" }}>{order.symbol}</td>
+                             <td style={{ padding: "10px", color: order.side === 'BUY' ? '#00ff00' : '#ff0000' }}>{order.side}</td>
+                             <td style={{ padding: "10px" }}>{order.price}</td>
+                             <td style={{ padding: "10px" }}>{order.quantity}</td>
+                        </tr>
+                    ))
                 )}
             </tbody>
         </table>

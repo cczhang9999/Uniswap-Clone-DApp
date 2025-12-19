@@ -23,6 +23,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final OrderCacheService orderCacheService;
     private final com.uniswap.clone.service.ClearingService clearingService;
+    private final AsyncOrderService asyncOrderService;
 
     @GlobalTransactional(name = "create-order-tx", rollbackFor = Exception.class)
     @com.alibaba.csp.sentinel.annotation.SentinelResource(value = "createOrder", fallbackClass = com.uniswap.clone.fallback.OrderFallback.class, fallback = "createOrderFallback")
@@ -47,6 +48,9 @@ public class OrderService {
         
         // 3. Cache Order
         orderCacheService.cacheOrder(orderEntity);
+
+        // 3.1 Async Sync to Summary DB
+        asyncOrderService.syncOrderToSummary(orderEntity);
 
         // 4. Process Order in Matching Engine (In-memory for this node)
         // Note: In a real distributed system, this might be an RPC call or MQ message
