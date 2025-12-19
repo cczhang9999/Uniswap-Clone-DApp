@@ -28,8 +28,21 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "quantity DECIMAL(20, 8), " +
                     "status VARCHAR(20), " +
                     "filled_quantity DECIMAL(20, 8) DEFAULT 0, " +
-                    "timestamp BIGINT" +
-                    ")");
+                "timestamp BIGINT" +
+                ")");
+            
+            // Create deposits table
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS deposits (" +
+                "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                "user_id VARCHAR(64) NOT NULL, " +
+                "currency VARCHAR(16) NOT NULL, " +
+                "amount DECIMAL(20, 8) NOT NULL, " +
+                "timestamp BIGINT NOT NULL, " +
+                "INDEX idx_user_id (user_id), " +
+                "INDEX idx_timestamp (timestamp)" +
+                ")");
+            System.out.println("Table 'deposits' check/creation completed.");
+
             System.out.println("Table 'orders' check/creation completed.");
         } catch (Exception e) {
             System.err.println("Error initializing database: " + e.getMessage());

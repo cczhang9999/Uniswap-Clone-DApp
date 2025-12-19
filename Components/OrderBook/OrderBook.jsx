@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Style from "./OrderBook.module.css";
 
-const OrderBook = ({ userId }) => {
+const OrderBook = ({ userId, refreshCount }) => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
   const [symbol, setSymbol] = useState("BTC-USDT");
   const [orderType, setOrderType] = useState("LIMIT");
@@ -95,7 +95,7 @@ const OrderBook = ({ userId }) => {
     fetchMyOrders();
     //const interval = setInterval(fetchMyOrders, 2000);
     //return () => clearInterval(interval);
-  }, [userId]);
+  }, [userId, refreshCount]);
 
   return (
     <div className={Style.OrderBook}>

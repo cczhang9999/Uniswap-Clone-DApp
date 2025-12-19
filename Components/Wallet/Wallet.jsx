@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Style from "./Wallet.module.css";
 
-const Wallet = ({ userId, setUserId }) => {
+const Wallet = ({ userId, setUserId, onSearch, refreshCount }) => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
   const [balances, setBalances] = useState({});
+  const [tempUserId, setTempUserId] = useState(userId);
   const [depositCurrency, setDepositCurrency] = useState("USDT");
   const [depositAmount, setDepositAmount] = useState("");
 
@@ -24,6 +25,7 @@ const Wallet = ({ userId, setUserId }) => {
   };
 
   useEffect(() => {
+    setTempUserId(userId);
     fetchBalance();
     //const interval = setInterval(fetchBalance, 2000);
     //return () => clearInterval(interval);
@@ -67,12 +69,24 @@ const Wallet = ({ userId, setUserId }) => {
         {/* User ID Input */}
         <div className={Style.Wallet_box_input}>
           <label>Current User ID (Simulated Login)</label>
-          <input
-            type="text"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="Enter User ID (e.g. user1)"
-          />
+          <div style={{ display: "flex", gap: "10px" }}>
+            <input
+              type="text"
+              value={tempUserId}
+              onChange={(e) => setTempUserId(e.target.value)}
+              placeholder="Enter User ID (e.g. user1)"
+            />
+            <button 
+              className={Style.Wallet_box_btn} 
+              style={{ width: "auto", padding: "0 20px", marginTop: "0" }}
+              onClick={() => {
+                setUserId(tempUserId);
+                if (onSearch) onSearch();
+              }}
+            >
+              Search
+            </button>
+          </div>
         </div>
 
         {/* Balance Display */}
