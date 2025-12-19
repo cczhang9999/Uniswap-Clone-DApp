@@ -61,7 +61,7 @@ dataSources:
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 5
+    maximumPoolSize: 10
     minimumIdle: 2
 
 rules:
