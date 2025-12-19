@@ -1,10 +1,18 @@
+# =============================================================================
+# ShardingSphere 配置文件
+# 用于定义数据源、分片规则、分片算法和主键生成策略
+# =============================================================================
+
 dataSources:
+  # --- 数据源配置 (4个数据库: myapp_0 到 myapp_3) ---
   ds0:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
+    # 数据库连接 (注意端口 9257 和库名 myapp_0)
     jdbcUrl: jdbc:mysql://212.227.166.131:9257/myapp_0?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
     username: hobart
     password: 123456
+    # 连接池配置
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
@@ -47,43 +55,80 @@ dataSources:
 rules:
 - !SHARDING
   tables:
+    # --- 订单表分片配置 ---
     t_order:
+      # 实际数据分布: 4个库(ds0-3) * 16张表(t_order_0-15) = 共64张表? 不，这里是 ds0..3 对应 t_order_0..15
+      # 应该是 t_order 表被分发到 4 个数据库中，且分表规则是独立的
+      # 当前配置通过 inline 表达式定义节点
       actualDataNodes: ds$->{0..3}.t_order_$->{0..15}
+      
+      # 分库策略: 根据 user_id 决定去哪个数据库 (ds0, ds1, ds2, ds3)
       databaseStrategy:
         standard:
           shardingColumn: user_id
           shardingAlgorithmName: database-inline
+          
+      # 分表策略: 根据 user_id 决定去哪张表 (t_order_0 到 t_order_15)
+      # 优化说明: 之前使用 order_id 分表，现改为 user_id，确保同一用户的订单在同一张表中，避免查询时全表扫描
       tableStrategy:
         standard:
           shardingColumn: user_id
           shardingAlgorithmName: t-order-table-inline
+          
+      # 主键生成策略 (Snowflake 算法生成分布式唯一ID)
       keyGenerateStrategy:
         column: order_id
         keyGeneratorName: snowflake
+
+    # --- 余额表配置 (分库不分表) ---
     balances:
+      # 每个数据库只有一张 balances 表
       actualDataNodes: ds$->{0..3}.balances
+      
+      # 分库策略: 根据 user_id 路由到特定数据库
       databaseStrategy:
         standard:
           shardingColumn: user_id
           shardingAlgorithmName: database-inline
+          
+    # --- 充值记录表配置 (分库不分表) ---
     deposits:
       actualDataNodes: ds$->{0..3}.deposits
+      # 同样根据 user_id 路由
       databaseStrategy:
         standard:
           shardingColumn: user_id
           shardingAlgorithmName: database-inline
+
+    # --- 充值记录表配置 (分库不分表) ---
+    trade:
+      actualDataNodes: ds$->{0..3}.trade
+      # 同样根据 user_id 路由
+      databaseStrategy:
+        standard:
+          shardingColumn: buyer_user_id
+          shardingAlgorithmName: database-inline
+
+  # --- 分片算法定义 ---
   shardingAlgorithms:
+    # 数据库分片算法: user_id 哈希值 % 4
     database-inline:
       type: INLINE
       props:
         algorithm-expression: ds$->{Math.abs(user_id.hashCode()) % 4}
+        
+    # 订单表分片算法: user_id 哈希值 % 16
+    # 这样可以确保同一个用户的数据在同一个分片表中，极大优化查询效率
     t-order-table-inline:
       type: INLINE
       props:
         algorithm-expression: t_order_$->{Math.abs(user_id.hashCode()) % 16}
+
+  # --- 主键生成器定义 ---
   keyGenerators:
     snowflake:
       type: SNOWFLAKE
 
 props:
+  # 显示实际执行的 SQL，用于调试
   sql-show: true

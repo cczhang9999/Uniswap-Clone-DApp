@@ -66,6 +66,11 @@ public class OrderController {
         return com.uniswap.clone.common.Result.success(orderMapper.selectList(query));
     }
     
+    @GetMapping("/trades/{userId}")
+    public com.uniswap.clone.common.Result<List<com.uniswap.clone.entity.Trade>> getTrades(@PathVariable String userId) {
+        return com.uniswap.clone.common.Result.success(clearingService.getUserTrades(userId));
+    }
+    
     static class DepositRequest {
         private String userId;
         private String currency;

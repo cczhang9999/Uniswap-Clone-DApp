@@ -75,6 +75,7 @@ const OrderBook = ({ userId, refreshCount }) => {
   };
 
   const [myOrders, setMyOrders] = useState([]);
+  const [trades, setTrades] = useState([]);
 
   // Fetch My Orders
   useEffect(() => {
@@ -92,7 +93,20 @@ const OrderBook = ({ userId, refreshCount }) => {
       }
     };
 
+    const fetchTrades = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/v1/trades/${userId}`);
+        const result = await response.json();
+        if (result.code === 200) {
+          setTrades(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch trades:", error);
+      }
+    };
+
     fetchMyOrders();
+    fetchTrades();
     //const interval = setInterval(fetchMyOrders, 2000);
     //return () => clearInterval(interval);
   }, [userId, refreshCount]);
@@ -203,6 +217,46 @@ const OrderBook = ({ userId, refreshCount }) => {
                             <td style={{ padding: "10px" }}>{order.status}</td>
                         </tr>
                     ))
+                )}
+            </tbody>
+        </table>
+      </div>
+
+      {/* Trade History Section */}
+      <div className={Style.OrderBook_box} style={{ marginTop: "2rem", display: "block" }}>
+        <div className={Style.OrderBook_box_heading}>
+          <p>Trade History</p>
+        </div>
+        <table style={{ width: "100%", color: "#fff", textAlign: "left", borderCollapse: "collapse" }}>
+            <thead>
+                <tr style={{ borderBottom: "1px solid #333" }}>
+                    <th style={{ padding: "10px" }}>Time</th>
+                    <th style={{ padding: "10px" }}>Symbol</th>
+                    <th style={{ padding: "10px" }}>Side</th>
+                    <th style={{ padding: "10px" }}>Price</th>
+                    <th style={{ padding: "10px" }}>Qty</th>
+                    <th style={{ padding: "10px" }}>Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {trades.length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#888" }}>No trades found</td></tr>
+                ) : (
+                    trades.map((trade) => {
+                        const isBuyer = trade.buyerUserId === userId;
+                        const role = isBuyer ? "Buyer" : "Seller";
+                        const sideColor = isBuyer ? "#00ff00" : "#ff0000"; // Green for Buy, Red for Sell
+                        return (
+                            <tr key={trade.tradeId} style={{ borderBottom: "1px solid #222" }}>
+                                <td style={{ padding: "10px" }}>{new Date(trade.timestamp).toLocaleTimeString()}</td>
+                                <td style={{ padding: "10px" }}>{trade.symbol}</td>
+                                <td style={{ padding: "10px", color: sideColor }}>{isBuyer ? 'BUY' : 'SELL'}</td>
+                                <td style={{ padding: "10px" }}>{trade.price}</td>
+                                <td style={{ padding: "10px" }}>{trade.quantity}</td>
+                                <td style={{ padding: "10px" }}>{role}</td>
+                            </tr>
+                        );
+                    })
                 )}
             </tbody>
         </table>

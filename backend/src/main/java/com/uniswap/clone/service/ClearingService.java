@@ -278,4 +278,12 @@ public class ClearingService {
             System.err.println("Redis cache unavailable, skipping cache invalidation: " + e.getMessage());
         }
     }
+
+    public List<com.uniswap.clone.entity.Trade> getUserTrades(String userId) {
+        QueryWrapper<com.uniswap.clone.entity.Trade> query = new QueryWrapper<>();
+        // Fetch trades where user is either buyer OR seller
+        query.eq("buyer_user_id", userId).or().eq("seller_user_id", userId)
+             .orderByDesc("timestamp");
+        return tradeMapper.selectList(query);
+    }
 }
