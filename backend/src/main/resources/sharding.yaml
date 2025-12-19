@@ -16,8 +16,8 @@ dataSources:
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 20
-    minimumIdle: 5
+    maximumPoolSize: 10
+    minimumIdle: 2
   ds1:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
@@ -27,8 +27,8 @@ dataSources:
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 20
-    minimumIdle: 5
+    maximumPoolSize: 10
+    minimumIdle: 2
   ds2:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
@@ -38,8 +38,8 @@ dataSources:
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 20
-    minimumIdle: 5
+    maximumPoolSize: 10
+    minimumIdle: 2
   ds3:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
@@ -49,8 +49,8 @@ dataSources:
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 20
-    minimumIdle: 5
+    maximumPoolSize: 10
+    minimumIdle: 2
 
   ds4:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
@@ -61,8 +61,8 @@ dataSources:
     connectionTimeout: 30000
     idleTimeout: 600000
     maxLifetime: 1800000
-    maximumPoolSize: 20
-    minimumIdle: 5
+    maximumPoolSize: 5
+    minimumIdle: 2
 
 rules:
 - !SHARDING
