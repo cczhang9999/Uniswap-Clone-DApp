@@ -1,5 +1,6 @@
 package com.uniswap.clone.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.uniswap.clone.common.Result;
 import com.uniswap.clone.engine.MatchingEngine;
 import com.uniswap.clone.entity.Order;
@@ -22,7 +23,7 @@ public class OrderService {
     private final MatchingEngine matchingEngine;
     private final OrderMapper orderMapper;
     private final OrderCacheService orderCacheService;
-    private final com.uniswap.clone.service.ClearingService clearingService;
+    private final ClearingService clearingService;
     private final AsyncOrderService asyncOrderService;
 
     @GlobalTransactional(name = "create-order-tx", rollbackFor = Exception.class)
@@ -73,7 +74,7 @@ public class OrderService {
     @GlobalTransactional(rollbackFor = Exception.class)
     public Result<String> cancelOrder(String orderId, String userId) {
         // 1. Get Order
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order> query = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        QueryWrapper<Order> query = new QueryWrapper<>();
         query.eq("order_id", orderId);
         query.eq("user_id", userId);
         Order order = orderMapper.selectOne(query);

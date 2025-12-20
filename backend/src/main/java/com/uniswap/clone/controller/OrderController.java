@@ -1,17 +1,23 @@
 package com.uniswap.clone.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.uniswap.clone.common.Result;
 import com.uniswap.clone.engine.MatchingEngine;
 import com.uniswap.clone.engine.OrderBook;
+import com.uniswap.clone.entity.OrderSummary;
+import com.uniswap.clone.mapper.OrderMapper;
+import com.uniswap.clone.mapper.OrderSummaryMapper;
 import com.uniswap.clone.model.Order;
 import com.uniswap.clone.model.Trade;
 import com.uniswap.clone.model.Wallet;
 import com.uniswap.clone.service.ClearingService;
+import com.uniswap.clone.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/api/v1")
@@ -21,19 +27,19 @@ public class OrderController {
 
     private final MatchingEngine matchingEngine;
     private final ClearingService clearingService;
-    private final com.uniswap.clone.mapper.OrderMapper orderMapper;
-    private final com.uniswap.clone.service.OrderService orderService;
-    private final com.uniswap.clone.mapper.OrderSummaryMapper orderSummaryMapper;
+    private final OrderMapper orderMapper;
+    private final OrderService orderService;
+    private final OrderSummaryMapper orderSummaryMapper;
 
     @GetMapping("/orders/summary")
-    public com.uniswap.clone.common.Result<List<com.uniswap.clone.entity.OrderSummary>> getAllOrdersSummary() {
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.uniswap.clone.entity.OrderSummary> query = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+    public Result<List<OrderSummary>> getAllOrdersSummary() {
+        QueryWrapper<OrderSummary> query = new QueryWrapper<>();
         query.orderByDesc("timestamp").last("LIMIT 50");
-        return com.uniswap.clone.common.Result.success(orderSummaryMapper.selectList(query));
+        return Result.success(orderSummaryMapper.selectList(query));
     }
 
     @PostMapping("/order")
-    public com.uniswap.clone.common.Result<List<Trade>> placeOrder(@RequestBody OrderRequest request) {
+    public Result<List<Trade>> placeOrder(@RequestBody OrderRequest request) {
         return orderService.createOrder(
             request.getUserId(),
             request.getSymbol(),
@@ -45,38 +51,38 @@ public class OrderController {
     }
 
     @DeleteMapping("/order/{orderId}")
-    public com.uniswap.clone.common.Result<String> cancelOrder(@PathVariable String orderId, @RequestParam String userId) {
+    public Result<String> cancelOrder(@PathVariable String orderId, @RequestParam String userId) {
         return orderService.cancelOrder(orderId, userId);
     }
 
     @GetMapping("/order/book/{symbol}")
-    public com.uniswap.clone.common.Result<OrderBookDTO> getOrderBook(@PathVariable String symbol) {
+    public Result<OrderBookDTO> getOrderBook(@PathVariable String symbol) {
         OrderBook orderBook = matchingEngine.getOrderBook(symbol);
         System.out.println("Order Book: " + orderBook);
-        return com.uniswap.clone.common.Result.success(new OrderBookDTO(orderBook.getBids(), orderBook.getAsks()));
+        return Result.success(new OrderBookDTO(orderBook.getBids(), orderBook.getAsks()));
     }
     
     @GetMapping("/balance/{userId}")
-    public com.uniswap.clone.common.Result<Wallet> getBalance(@PathVariable String userId) {
-        return com.uniswap.clone.common.Result.success(clearingService.getWallet(userId));
+    public Result<Wallet> getBalance(@PathVariable String userId) {
+        return Result.success(clearingService.getWallet(userId));
     }
     
     @PostMapping("/balance/deposit")
-    public com.uniswap.clone.common.Result<String> deposit(@RequestBody DepositRequest request) {
+    public Result<String> deposit(@RequestBody DepositRequest request) {
             clearingService.deposit(request.getUserId(), request.getCurrency(), request.getAmount());
-            return com.uniswap.clone.common.Result.success("Deposit successful");
+            return Result.success("Deposit successful");
     }
 
     @GetMapping("/orders/{userId}")
-    public com.uniswap.clone.common.Result<List<com.uniswap.clone.entity.Order>> getOrders(@PathVariable String userId) {
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.uniswap.clone.entity.Order> query = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+    public Result<List<com.uniswap.clone.entity.Order>> getOrders(@PathVariable String userId) {
+        QueryWrapper<com.uniswap.clone.entity.Order> query = new QueryWrapper<>();
         query.eq("user_id", userId).orderByDesc("timestamp");
-        return com.uniswap.clone.common.Result.success(orderMapper.selectList(query));
+        return Result.success(orderMapper.selectList(query));
     }
     
     @GetMapping("/trades/{userId}")
-    public com.uniswap.clone.common.Result<List<com.uniswap.clone.entity.Trade>> getTrades(@PathVariable String userId) {
-        return com.uniswap.clone.common.Result.success(clearingService.getUserTrades(userId));
+    public Result<List<com.uniswap.clone.entity.Trade>> getTrades(@PathVariable String userId) {
+        return Result.success(clearingService.getUserTrades(userId));
     }
     
     static class DepositRequest {
